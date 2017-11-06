@@ -18,11 +18,11 @@ public class DothanConnection {
         clientSocket.closeHandler(v -> serverSocket.close());
         //不管那端的连接出现异常时，关闭两端的连接
         serverSocket.exceptionHandler(e -> {
-            DothanHelper.logger.error(e.getMessage(), e);
+            DothanHelper.logger.error("Server Socket Exception Occurred. "+e.getMessage(), e);
             close();
         });
         clientSocket.exceptionHandler(e -> {
-            DothanHelper.logger.error(e.getMessage(), e);
+            DothanHelper.logger.error("Client Socket Exception Occurred. "+e.getMessage(), e);
             close();
         });
         //当收到来自客户端的数据包时，转发给mysql目标服务器

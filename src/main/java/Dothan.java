@@ -3,13 +3,15 @@ import io.vertx.core.Vertx;
 
 public class Dothan {
     public static void main(String[] args) {
-        if(args.length<2){
-            System.out.println("ARGS LACK");
+        System.out.println("Dothan 1.1");
+        if(args.length!=3){
+            System.out.println("Usage: java -jar Dothan.jar SERVER_HOST SERVER_PORT LISTEN_PORT");
             return;
         }
         String host=args[0];
         String port=args[1];
-        System.out.println("parameters: host is "+host+" and port is "+Integer.parseInt(port));
-        Vertx.vertx().deployVerticle(new DothanVerticle(host,Integer.parseInt(port)));
+        String listenPort=args[2];
+        System.out.println("Listen on port "+Integer.parseInt(listenPort)+", proxy for server "+host+":"+Integer.parseInt(port));
+        Vertx.vertx().deployVerticle(new DothanVerticle(host,Integer.parseInt(port),Integer.parseInt(listenPort)));
     }
 }
