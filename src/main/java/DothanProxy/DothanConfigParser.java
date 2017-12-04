@@ -1,6 +1,8 @@
 package DothanProxy;
 
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileReader;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.ArrayList;
@@ -37,5 +39,27 @@ public class DothanConfigParser {
             }
         });
         return configItems;
+    }
+
+    public int getVersion() {
+        int version = 0;
+        try (BufferedReader br = new BufferedReader(new FileReader(this.configFilePath))) {
+
+            String sCurrentLine;
+
+            while ((sCurrentLine = br.readLine()) != null) {
+                if (sCurrentLine.matches("^# Dothan Config Version \\d+$")) {
+                    String str_version = sCurrentLine.trim().substring(24);
+                    version = Integer.parseInt(str_version);
+                    break;
+                }
+            }
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        return version;
+
     }
 }

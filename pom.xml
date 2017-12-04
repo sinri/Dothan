@@ -6,7 +6,7 @@
 
     <groupId>com.sinri</groupId>
     <artifactId>Dothan</artifactId>
-    <version>2.0-SNAPSHOT</version>
+    <version>3.0-SNAPSHOT</version>
     <build>
         <plugins>
             <plugin>
