@@ -22,7 +22,7 @@ public class Dothan {
     }
 
     public static void main(String[] args) {
-        System.out.println("Dothan 3.0");
+        System.out.println("Dothan 3.1");
 
         Options ops = new Options();
         ops.addOption("help", "Display help information");
