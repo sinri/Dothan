@@ -31,12 +31,13 @@ You can obtain the runnable package in two ways.
 
 usage: options
 
-     -c <arg>   Set proxy config file. If not use this, h,p and l are needed.
-     -d         use detail mode
-     -h <arg>   database host
-     -help      Display help information
-     -l <arg>   listen local port
-     -p <arg>   database port
+    -c <arg>   Set proxy config file. If not use this, h,p and l are needed.
+    -d         use detail mode
+    -h <arg>   database host
+    -help      Display help information
+    -k         keep config and no hot update (since version 3.1)
+    -l <arg>   listen local port
+    -p <arg>   database port
 
 ### Quick Proxy 
 
@@ -74,6 +75,8 @@ This relies on the version declaration in configuration file as a line:
 The version code should be an integer. 
 If there are more than one line in this format, only the first would be used. 
 The file would be watched by the Dothan process and update config if the current version code became greater.
+
+Since version 3.1, Dothan uses WatchService for hot update function, and provide a parameter (-k) to disable hot update.
 
 ----
 

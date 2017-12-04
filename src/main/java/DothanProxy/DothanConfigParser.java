@@ -1,5 +1,7 @@
 package DothanProxy;
 
+import io.vertx.core.logging.LoggerFactory;
+
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
@@ -22,7 +24,7 @@ public class DothanConfigParser {
                 return;
             }
             if (!s.matches("^\\d+\\s+[^:\\s]+:\\d+$")) {
-                DothanHelper.logger.error("Cannot parse this line, ignore it: \n" + s);
+                LoggerFactory.getLogger(this.getClass()).error("Cannot parse this line, ignore it: \n" + s);
                 return;
             }
             String[] s1 = s.split("\\s+");
@@ -58,4 +60,5 @@ public class DothanConfigParser {
         return version;
 
     }
+
 }

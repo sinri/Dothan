@@ -1,6 +1,7 @@
 package DothanProxy;
 
 import io.vertx.core.AbstractVerticle;
+import io.vertx.core.logging.LoggerFactory;
 import io.vertx.core.net.NetClient;
 import io.vertx.core.net.NetServer;
 
@@ -33,23 +34,23 @@ public class DothanVerticle extends AbstractVerticle {
             if (result.succeeded()) {
                 //与目标mysql服务器成功连接连接之后，创造一个MysqlProxyConnection对象,并执行代理方法
                 new DothanConnection(socket, result.result()).proxy();
-                DothanHelper.logger.info("Successfully connected to database " + serverHost + ":" + serverPort + "; " +
+                LoggerFactory.getLogger(this.getClass()).info("Successfully connected to database " + serverHost + ":" + serverPort + "; " +
                         "Remote: " + result.result().remoteAddress() + " Local: " + result.result().localAddress());
             } else {
-                DothanHelper.logger.error("Failed to connect to database " + serverHost + ":" + serverPort + "; " +
+                LoggerFactory.getLogger(this.getClass()).error("Failed to connect to database " + serverHost + ":" + serverPort + "; " +
                         "Remote: " + result.result().remoteAddress() + " Local: " + result.result().localAddress());
-                DothanHelper.logger.error(result.cause().getMessage(), result.cause());
+                LoggerFactory.getLogger(this.getClass()).error(result.cause().getMessage(), result.cause());
                 socket.close();
             }
         })).listen(listenPort, listenResult -> {//代理服务器的监听端口
             if (listenResult.succeeded()) {
                 //成功启动代理服务器
-                DothanHelper.logger.info("MySQL proxy server start up " +
+                LoggerFactory.getLogger(this.getClass()).info("MySQL proxy server start up " +
                         "for database " + serverHost + ":" + serverPort + " " +
                         "listening local port " + listenPort + ", actual port " + listenResult.result().actualPort());
             } else {
                 //启动代理服务器失败
-                DothanHelper.logger.error("Mysql proxy exit for database " + serverHost + ":" + serverPort + " " +
+                LoggerFactory.getLogger(this.getClass()).error("Mysql proxy exit for database " + serverHost + ":" + serverPort + " " +
                         "and listen port " + listenPort + ", actual port " + listenResult.result().actualPort() +
                         "Reason: " + listenResult.cause().getMessage(), listenResult.cause());
                 System.exit(1);

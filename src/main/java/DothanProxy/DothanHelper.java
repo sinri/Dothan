@@ -1,8 +1,5 @@
 package DothanProxy;
 
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
-
 public class DothanHelper {
 
     public static boolean isDetailMode() {
@@ -14,8 +11,5 @@ public class DothanHelper {
     }
 
     private static boolean detailMode = false;
-
-    public static final Logger logger= LoggerFactory.getLogger(DothanHelper.class);
-
 
 }
