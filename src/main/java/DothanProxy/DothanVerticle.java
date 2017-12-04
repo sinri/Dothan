@@ -5,11 +5,11 @@ import io.vertx.core.net.NetClient;
 import io.vertx.core.net.NetServer;
 
 public class DothanVerticle extends AbstractVerticle {
-    
-    private int serverPort = 3306;
-    private String serverHost = "10.10.0.6";
 
-    private int listenPort = 3306;
+    private int serverPort;// = 3306;
+    private String serverHost;// = "10.10.0.6";
+
+    private int listenPort;// = 3306;
     
     public DothanVerticle(String serverHost,int serverPort,int listenPort){
         super();
@@ -24,8 +24,8 @@ public class DothanVerticle extends AbstractVerticle {
         this.serverPort = config.serverPort;
         this.listenPort = config.listenPort;
     }
-    
-    public void start() throws Exception {
+
+    public void start() {
         NetServer netServer = vertx.createNetServer();//创建代理服务器
         NetClient netClient = vertx.createNetClient();//创建连接mysql客户端
         netServer.connectHandler(socket -> netClient.connect(serverPort, serverHost, result -> {

@@ -96,7 +96,7 @@ public class Dothan {
                     switch (stateMachine[0]) {
                         case DothanHotUpdateVersionStateOfWatching:
                             checkingVersion = dothanConfigParser.getVersion();
-                            DothanHelper.logger.info("Check version [" + checkingVersion + "] against loaded version " + configVersion);
+                            DothanHelper.logger.debug("Check version [" + checkingVersion + "] against loaded version " + configVersion);
                             if (checkingVersion > configVersion) {
                                 // a new version came
                                 DothanHelper.logger.info("Ready to reload version " + checkingVersion);
@@ -115,7 +115,7 @@ public class Dothan {
                             break;
                         case DothanHotUpdateVersionStateOfClosing:
                             // do nothing
-                            DothanHelper.logger.info("waiting for instance closing");
+                            DothanHelper.logger.debug("waiting for instance closing");
                             break;
                         case DothanHotUpdateVersionStateOfCloseFailed:
                             // try again

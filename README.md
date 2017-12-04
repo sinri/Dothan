@@ -27,7 +27,7 @@ You can obtain the runnable package in two ways.
 1. Use Maven 3, run `mvn clean package`. 
 
 
-## Usage (Version 2.0)
+## Usage (As of Version 2.0)
 
 usage: options
 
@@ -63,8 +63,20 @@ The command would be as following if the config file path is  `/path/to/Dothan.c
 
     java -jar Dothan.jar -d -c /path/to/Dothan.config
 
+### Hot Update Version
+
+As of version 3.0, the hot version update is available for Config-File Mode.
+
+This relies on the version declaration in configuration file as a line:
+
+    # Dothan Config Version VERSION_CODE
+
+The version code should be an integer. 
+If there are more than one line in this format, only the first would be used. 
+The file would be watched by the Dothan process and update config if the current version code became greater.
+
 ----
 
-## Usage (Version 1.1, deprecated)
+## Museum: Version 1.1 (deprecated)
 
     java -jar target/Dothan-1.1-SNAPSHOT.jar some.mysql.rds.aliyuncs.com 3306 33306
