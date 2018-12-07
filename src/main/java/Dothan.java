@@ -5,11 +5,13 @@ import DothanProxy.DothanVerticle;
 import io.vertx.core.Vertx;
 import io.vertx.core.logging.LoggerFactory;
 import org.apache.commons.cli.*;
+import org.apache.commons.validator.routines.InetAddressValidator;
 
 import java.io.File;
 import java.nio.file.*;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 
 public class Dothan {
     private static Vertx instance;
@@ -22,7 +24,7 @@ public class Dothan {
     }
 
     public static void main(String[] args) {
-        System.out.println("Dothan 3.1");
+        System.out.println("Dothan 4.0");
 
         Options ops = new Options();
         ops.addOption("help", "Display help information");
@@ -31,6 +33,8 @@ public class Dothan {
         ops.addOption("h", true, "database host");
         ops.addOption("p", true, "database port");
         ops.addOption("l", true, "listen local port");
+        ops.addOption("w", true, "whitelist, separate IP with comma (as of 4.0)");
+        ops.addOption("b", true, "blacklist, separate IP with comma (as of 4.0)");
         ops.addOption("d", "use detail mode");
         ops.addOption("k", "keep config and no hot update");
 
@@ -57,6 +61,8 @@ public class Dothan {
                 configVersion = dothanConfigParser.getVersion();
                 LoggerFactory.getLogger(Dothan.class).info("dothanConfigParser read version: " + configVersion);
                 dothanVerticleConfigs.addAll(configItems);
+                DothanVerticle.whitelist = dothanConfigParser.getClientIPWhiteList();
+                DothanVerticle.blacklist = dothanConfigParser.getClientIPBlackList();
             } else {
                 if (options.hasOption("h") && options.hasOption("p") && options.hasOption("l")) {
                     String vh = "127.0.0.1";
@@ -68,6 +74,29 @@ public class Dothan {
 
                     DothanConfigItem dv = new DothanConfigItem(vh, Integer.parseInt(vp), Integer.parseInt(vl));
                     dothanVerticleConfigs.add(dv);
+
+                    if (options.hasOption("w")) {
+                        HashSet<String> set = new HashSet<>();
+                        for (String ip : options.getOptionValue("w", "").split(",")) {
+                            if (InetAddressValidator.getInstance().isValid(ip)) {
+                                set.add(ip);
+                            }
+                        }
+                        if (!set.isEmpty()) {
+                            DothanVerticle.whitelist = set;
+                        }
+                    }
+                    if (options.hasOption("b")) {
+                        HashSet<String> set = new HashSet<>();
+                        for (String ip : options.getOptionValue("b", "").split(",")) {
+                            if (InetAddressValidator.getInstance().isValid(ip)) {
+                                set.add(ip);
+                            }
+                        }
+                        if (!set.isEmpty()) {
+                            DothanVerticle.blacklist = set;
+                        }
+                    }
 
                     configVersion = -1;
                 } else {
@@ -151,6 +180,9 @@ public class Dothan {
                             ArrayList<DothanConfigItem> configItems = dothanConfigParser.getConfigItems();
                             dothanVerticleConfigs.clear();
                             dothanVerticleConfigs.addAll(configItems);
+
+                            DothanVerticle.whitelist = dothanConfigParser.getClientIPWhiteList();
+                            DothanVerticle.blacklist = dothanConfigParser.getClientIPBlackList();
 
                             Dothan.deployAll(dothanVerticleConfigs);
                             configVersion = dothanConfigParser.getVersion();

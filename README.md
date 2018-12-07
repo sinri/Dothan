@@ -33,13 +33,15 @@ You can obtain the runnable package in two ways.
 
 usage: options
 
-    -c <arg>   Set proxy config file. If not use this, h,p and l are needed.
-    -d         use detail mode
-    -h <arg>   database host
-    -help      Display help information
-    -k         keep config and no hot update (since version 3.1)
-    -l <arg>   listen local port
-    -p <arg>   database port
+     -b <arg>   blacklist, separate IP with comma (as of 4.0)
+     -c <arg>   Set proxy config file. If not use this, h,p and l are needed.
+     -d         use detail mode
+     -h <arg>   database host
+     -help      Display help information
+     -k         keep config and no hot update
+     -l <arg>   listen local port
+     -p <arg>   database port
+     -w <arg>   whitelist, separate IP with comma (as of 4.0)
 
 ### Quick Proxy 
 
@@ -53,10 +55,15 @@ You should provide a config file as *c*onfig parameter.
 
 The config file should contain one or more lines and each for one proxy plan. 
 The lines with leading Sharp(#) would be treated as comments. 
+The lines with leading Plus(+) would be treated as IP Address in whitelist. If no such lines, whitelist is ignored.
+The lines with leading Minus(-) would be treated as IP Address in blacklist. If no such lines, blacklist is ignored.
 Here is an example:
 
 ````
 # Dothan Config [SAMPLE]
+
++ 127.0.0.1
+- 192.168.0.2
 
 20001 1.rds.aliyuncs.com:3306
 20002 2.rds.aliyuncs.com:3306

@@ -19,17 +19,17 @@ public class DothanConnection {
         clientSocket.closeHandler(v -> serverSocket.close());
         //不管那端的连接出现异常时，关闭两端的连接
         serverSocket.exceptionHandler(e -> {
-            LoggerFactory.getLogger(this.getClass()).error("Server Socket Exception Occurred. " + e.getMessage(), e);
+            LoggerFactory.getLogger(this.getClass()).error("SERVICE PROVIDER Socket Exception Occurred. " + e.getMessage(), e);
             close();
         });
         clientSocket.exceptionHandler(e -> {
-            LoggerFactory.getLogger(this.getClass()).error("Client Socket Exception Occurred. " + e.getMessage(), e);
+            LoggerFactory.getLogger(this.getClass()).error("CLIENT Socket Exception Occurred. " + e.getMessage(), e);
             close();
         });
 
         clientSocket.handler(buffer -> {
             if (DothanHelper.isDetailMode()) {
-                LoggerFactory.getLogger(this.getClass()).info("From client[" + clientSocket.remoteAddress() + "], request length: " + buffer.length());
+                LoggerFactory.getLogger(this.getClass()).info("From CLIENT [" + clientSocket.remoteAddress() + "], request length: " + buffer.length());
 //                DothanHelper.logger.info(buffer);
 //                DothanHelper.logger.info(buffer.getString(0, buffer.length()));
             }
@@ -37,7 +37,7 @@ public class DothanConnection {
         });
         serverSocket.handler(buffer -> {
             if (DothanHelper.isDetailMode()) {
-                LoggerFactory.getLogger(this.getClass()).info("From server[" + serverSocket.remoteAddress() + "], response length: " + buffer.length());
+                LoggerFactory.getLogger(this.getClass()).info("From SERVICE PROVIDER [" + serverSocket.remoteAddress() + "], response length: " + buffer.length());
 //                DothanHelper.logger.info(buffer);
 //                DothanHelper.logger.info(buffer.getString(0, buffer.length()));
             }

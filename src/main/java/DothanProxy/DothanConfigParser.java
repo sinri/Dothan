@@ -1,6 +1,7 @@
 package DothanProxy;
 
 import io.vertx.core.logging.LoggerFactory;
+import org.apache.commons.validator.routines.InetAddressValidator;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -8,6 +9,8 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Set;
 
 public class DothanConfigParser {
     private String configFilePath;
@@ -20,7 +23,7 @@ public class DothanConfigParser {
         ArrayList<DothanConfigItem> configItems = new ArrayList<>();
         Files.lines((new File(this.configFilePath)).toPath()).forEach(s -> {
             s = s.trim();
-            if (s.startsWith("#") || s.isEmpty()) {
+            if (s.startsWith("#") || s.startsWith("+") || s.isEmpty()) {
                 return;
             }
             if (!s.matches("^\\d+\\s+[^:\\s]+:\\d+$")) {
@@ -59,6 +62,50 @@ public class DothanConfigParser {
 
         return version;
 
+    }
+
+    public Set<String> getClientIPWhiteList() {
+        HashSet<String> set = new HashSet<>();
+        try (BufferedReader br = new BufferedReader(new FileReader(this.configFilePath))) {
+
+            String sCurrentLine;
+
+            while ((sCurrentLine = br.readLine()) != null) {
+                if (sCurrentLine.matches("^\\+ .+$")) {//\d+\.\d+\.\d+\.\d+
+                    String ip = sCurrentLine.trim().substring(2);
+                    if (InetAddressValidator.getInstance().isValid(ip)) {
+                        set.add(ip);
+                    }
+                }
+            }
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        return set.isEmpty() ? null : set;
+    }
+
+    public Set<String> getClientIPBlackList() {
+        HashSet<String> set = new HashSet<>();
+        try (BufferedReader br = new BufferedReader(new FileReader(this.configFilePath))) {
+
+            String sCurrentLine;
+
+            while ((sCurrentLine = br.readLine()) != null) {
+                if (sCurrentLine.matches("^- .+$")) {//\d+\.\d+\.\d+\.\d+
+                    String ip = sCurrentLine.trim().substring(2);
+                    if (InetAddressValidator.getInstance().isValid(ip)) {
+                        set.add(ip);
+                    }
+                }
+            }
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        return set.isEmpty() ? null : set;
     }
 
 }
