@@ -47,12 +47,12 @@ public class DothanVerticle extends AbstractVerticle {
 //                    if(whitelist!=null){
 //                        whitelist.forEach(ip->LoggerFactory.getLogger(this.getClass()).warn("+ "+ip));
 //                    }
-                    if (whitelist != null && !whitelist.contains(result.result().localAddress().host())) {
-                        LoggerFactory.getLogger(this.getClass()).error("CLIENT " + result.result().localAddress().host() + " is not in the whitelist");
+                    if (whitelist != null && !whitelist.contains(socket.remoteAddress().host())) {
+                        LoggerFactory.getLogger(this.getClass()).error("CLIENT " + socket.remoteAddress().host() + " is not in the whitelist");
                         socket.close();
                     }
-                    if (blacklist != null && blacklist.contains(result.result().localAddress().host())) {
-                        LoggerFactory.getLogger(this.getClass()).error("CLIENT " + result.result().localAddress().host() + " is in the blacklist");
+                    if (blacklist != null && blacklist.contains(socket.remoteAddress().host())) {
+                        LoggerFactory.getLogger(this.getClass()).error("CLIENT " + socket.remoteAddress().host() + " is in the blacklist");
                         socket.close();
                     }
                 } else {
