@@ -16,6 +16,7 @@ _其实我就是嫌弃阿里云的RDS，白名单还不能像ECS挂安全组。_
 
 * io.vertx core
 * Apache commons cli
+* Apache commons validator
 
 ## License
 
