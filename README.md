@@ -97,7 +97,7 @@ Since version 3.1, Dothan uses WatchService for hot update function, and provide
 
 We have to admit, the network is not so safe. That is why the service provider make databases not accessible from outside.
 However, we have certain time to access to such service, but we may be afraid that our connections would be seen by others through public network.
-So we might use the translate mode to pass our data encrypted.
+So we might use the translate mode to pass our data encrypted, with two new parameters `MODE` and `TRANSFER KEY`, as of version 5.0.
 
 ````
                   [CLIENT] 
