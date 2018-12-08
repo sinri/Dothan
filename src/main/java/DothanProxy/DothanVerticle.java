@@ -36,13 +36,8 @@ public class DothanVerticle extends AbstractVerticle {
         NetClient netClient = vertx.createNetClient();//创建连接mysql客户端
         netServer.connectHandler(socket -> {
             netClient.connect(serverPort, serverHost, result -> {
-                //响应来自客户端的连接请求，成功之后，在建立一个与目标mysql服务器的连接
+                //响应来自客户端的连接请求，观测客户端IP，成功之后，建立一个与目标mysql服务器的连接
                 if (result.succeeded()) {
-                    //与目标mysql服务器成功连接连接之后，创造一个MysqlProxyConnection对象,并执行代理方法
-                    new DothanConnection(socket, result.result()).proxy();
-                    LoggerFactory.getLogger(this.getClass()).info("PROXY successfully connected to SERVICE PROVIDER " + serverHost + ":" + serverPort + "; " +
-                            "Remote: " + result.result().remoteAddress() + " Local: " + result.result().localAddress());
-
 //                    LoggerFactory.getLogger(this.getClass()).warn("whitelist is null: "+(whitelist==null?"YES":"NO"));
 //                    if(whitelist!=null){
 //                        whitelist.forEach(ip->LoggerFactory.getLogger(this.getClass()).warn("+ "+ip));
@@ -55,14 +50,17 @@ public class DothanVerticle extends AbstractVerticle {
                         LoggerFactory.getLogger(this.getClass()).error("CLIENT " + socket.remoteAddress().host() + " is in the blacklist");
                         socket.close();
                     }
+
+                    //与目标mysql服务器成功连接连接之后，创造一个MysqlProxyConnection对象,并执行代理方法
+                    new DothanConnection(socket, result.result()).proxy();
+                    LoggerFactory.getLogger(this.getClass()).info("PROXY [" + result.result().localAddress() + "] successfully connected to SERVICE PROVIDER [" + result.result().remoteAddress() + "]");
                 } else {
                     if (result.result() == null) {
-                        LoggerFactory.getLogger(this.getClass()).error("PROXY did not succeed, result is null.");
+                        LoggerFactory.getLogger(this.getClass()).error("PROXY failed to connect to SERVICE PROVIDER, NULL RESULT SEEN.");
                     } else {
-                        LoggerFactory.getLogger(this.getClass()).error("PROXY Failed to connect to SERVICE PROVIDER " + serverHost + ":" + serverPort + "; " +
-                                "Remote: " + result.result().remoteAddress() + " Local: " + result.result().localAddress());
-                        LoggerFactory.getLogger(this.getClass()).error(result.cause().getMessage(), result.cause());
+                        LoggerFactory.getLogger(this.getClass()).info("PROXY [" + result.result().localAddress() + "] failed to connect to SERVICE PROVIDER [" + result.result().remoteAddress() + "]");
                     }
+                    LoggerFactory.getLogger(this.getClass()).error(result.cause().getMessage(), result.cause());
                     socket.close();
                 }
             });
