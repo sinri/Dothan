@@ -24,7 +24,7 @@ public class Dothan {
     }
 
     public static void main(String[] args) {
-        System.out.println("Dothan 4.0");
+        System.out.println("Dothan 5.0");
 
         Options ops = new Options();
         ops.addOption("help", "Display help information");
@@ -63,6 +63,9 @@ public class Dothan {
                 dothanVerticleConfigs.addAll(configItems);
                 DothanVerticle.whitelist = dothanConfigParser.getClientIPWhiteList();
                 DothanVerticle.blacklist = dothanConfigParser.getClientIPBlackList();
+
+                DothanHelper.setTransferMode(dothanConfigParser.getTransferMode());
+                DothanHelper.setTransferKey(dothanConfigParser.getTransferKey());
             } else {
                 if (options.hasOption("h") && options.hasOption("p") && options.hasOption("l")) {
                     String vh = "127.0.0.1";

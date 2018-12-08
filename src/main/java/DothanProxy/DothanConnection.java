@@ -1,7 +1,12 @@
 package DothanProxy;
 
+import Security.CryptAgentOfAES;
+import io.vertx.core.buffer.Buffer;
+import io.vertx.core.buffer.impl.BufferFactoryImpl;
 import io.vertx.core.logging.LoggerFactory;
 import io.vertx.core.net.NetSocket;
+
+import java.util.Objects;
 
 public class DothanConnection {
     private final NetSocket clientSocket;
@@ -28,12 +33,30 @@ public class DothanConnection {
         });
 
         clientSocket.handler(buffer -> {
-            if (DothanHelper.isDetailMode()) {
-                LoggerFactory.getLogger(this.getClass()).info("From CLIENT [" + clientSocket.remoteAddress() + "], request length: " + buffer.length());
-//                DothanHelper.logger.info(buffer);
-//                DothanHelper.logger.info(buffer.getString(0, buffer.length()));
+            switch (DothanHelper.getTransferMode()) {
+                case DECRYPT:
+                    Buffer decryptedBuffer = new BufferFactoryImpl().buffer(Objects.requireNonNull(CryptAgentOfAES.decryptBytes(buffer.getBytes(), DothanHelper.getTransferKey())));
+                    if (DothanHelper.isDetailMode()) {
+                        LoggerFactory.getLogger(DothanConnection.this.getClass()).info("From CLIENT [" + clientSocket.remoteAddress() + "], request length: " + buffer.length() + " DECRYPT result length: " + decryptedBuffer.length());
+                    }
+                    serverSocket.write(decryptedBuffer);
+                    break;
+                case ENCRYPT:
+                    Buffer encryptedBuffer = new BufferFactoryImpl().buffer(Objects.requireNonNull(CryptAgentOfAES.encryptBytes(buffer.getBytes(), DothanHelper.getTransferKey())));
+                    if (DothanHelper.isDetailMode()) {
+                        LoggerFactory.getLogger(DothanConnection.this.getClass()).info("From CLIENT [" + clientSocket.remoteAddress() + "], request length: " + buffer.length() + " ENCRYPT result length: " + encryptedBuffer.length());
+                    }
+                    serverSocket.write(encryptedBuffer);
+                    break;
+                case PLAIN:
+                default:
+                    if (DothanHelper.isDetailMode()) {
+                        LoggerFactory.getLogger(DothanConnection.this.getClass()).info("From CLIENT [" + clientSocket.remoteAddress() + "], request length: " + buffer.length());
+                    }
+                    serverSocket.write(buffer);
+                    break;
             }
-            serverSocket.write(buffer);
+
         });
         serverSocket.handler(buffer -> {
             if (DothanHelper.isDetailMode()) {

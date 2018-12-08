@@ -1,5 +1,6 @@
 package DothanProxy;
 
+import DothanProxy.DothanHelper.DothanTransferModeEnum;
 import io.vertx.core.logging.LoggerFactory;
 import org.apache.commons.validator.routines.InetAddressValidator;
 
@@ -106,6 +107,47 @@ public class DothanConfigParser {
         }
 
         return set.isEmpty() ? null : set;
+    }
+
+    public DothanTransferModeEnum getTransferMode() {
+        DothanTransferModeEnum mode = DothanTransferModeEnum.PLAIN;
+        try (BufferedReader br = new BufferedReader(new FileReader(this.configFilePath))) {
+
+            String sCurrentLine;
+
+            while ((sCurrentLine = br.readLine()) != null) {
+                if (sCurrentLine.matches("^# MODE [A-Z]+$")) {
+                    String str_mode = sCurrentLine.trim().substring(7);
+                    mode = DothanTransferModeEnum.valueOf(str_mode);
+                    break;
+                }
+            }
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        return mode;
+    }
+
+    public String getTransferKey() {
+        String key = "";
+        try (BufferedReader br = new BufferedReader(new FileReader(this.configFilePath))) {
+
+            String sCurrentLine;
+
+            while ((sCurrentLine = br.readLine()) != null) {
+                if (sCurrentLine.matches("^# TRANSFER KEY .+$")) {
+                    key = sCurrentLine.trim().substring(15);
+                    break;
+                }
+            }
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        return key;
     }
 
 }
