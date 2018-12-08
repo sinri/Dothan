@@ -17,8 +17,7 @@ public class CryptAgent {
         // String encode = encoder.encode(data);
         // 从JKD 9开始rt.jar包已废除，从JDK 1.8开始使用java.util.Base64.Encoder
         Base64.Encoder encoder = Base64.getEncoder();
-        String encode = encoder.encodeToString(data);
-        return encode;
+        return encoder.encodeToString(data);
     }
 
     /**
@@ -32,17 +31,14 @@ public class CryptAgent {
         // byte[] buffer = decoder.decodeBuffer(data);
         // 从JKD 9开始rt.jar包已废除，从JDK 1.8开始使用java.util.Base64.Decoder
         Base64.Decoder decoder = Base64.getDecoder();
-        byte[] buffer = decoder.decode(data);
-        return buffer;
+        return decoder.decode(data);
     }
 
     public static String md5(String str) throws NoSuchAlgorithmException {
         MessageDigest md5 = MessageDigest.getInstance("MD5");
         md5.update(str.getBytes());
         byte[] resultArray = md5.digest();
-        String result = byteArrayToHex(resultArray);
-        //System.out.println("str -> md5: "+result);
-        return result;
+        return byteArrayToHex(resultArray);
     }
 
     public static String byteArrayToHex(byte[] byteArray) {

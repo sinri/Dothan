@@ -1,11 +1,11 @@
 package DothanProxy;
 
-public class DothanConfigItem {
+public class DothanProxyRequirement {
     public String serverHost;
     public int serverPort;
     public int listenPort;
 
-    public DothanConfigItem(String serverHost, int serverPort, int listenPort) {
+    public DothanProxyRequirement(String serverHost, int serverPort, int listenPort) {
         this.serverHost = serverHost;
         this.serverPort = serverPort;
         this.listenPort = listenPort;

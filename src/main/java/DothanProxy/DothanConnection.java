@@ -1,5 +1,6 @@
 package DothanProxy;
 
+import Config.DothanConfig;
 import Security.CryptAgentOfAES;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.buffer.impl.BufferFactoryImpl;
@@ -8,7 +9,7 @@ import io.vertx.core.net.NetSocket;
 
 import java.util.Objects;
 
-public class DothanConnection {
+class DothanConnection {
     private final NetSocket clientSocket;
     private final NetSocket serverSocket;
 
@@ -33,24 +34,24 @@ public class DothanConnection {
         });
 
         clientSocket.handler(buffer -> {
-            switch (DothanHelper.getTransferMode()) {
+            switch (DothanConfig.getInstance().getTransferMode()) {
                 case DECRYPT:
-                    Buffer decryptedBuffer = new BufferFactoryImpl().buffer(Objects.requireNonNull(CryptAgentOfAES.decryptBytes(buffer.getBytes(), DothanHelper.getTransferKey())));
-                    if (DothanHelper.isDetailMode()) {
+                    Buffer decryptedBuffer = new BufferFactoryImpl().buffer(Objects.requireNonNull(CryptAgentOfAES.decryptBytes(buffer.getBytes(), DothanConfig.getInstance().getTransferKey())));
+                    if (DothanConfig.getInstance().isVerbose()) {
                         LoggerFactory.getLogger(DothanConnection.this.getClass()).info("From CLIENT [" + clientSocket.remoteAddress() + "], request length: " + buffer.length() + " DECRYPT result length: " + decryptedBuffer.length());
                     }
                     serverSocket.write(decryptedBuffer);
                     break;
                 case ENCRYPT:
-                    Buffer encryptedBuffer = new BufferFactoryImpl().buffer(Objects.requireNonNull(CryptAgentOfAES.encryptBytes(buffer.getBytes(), DothanHelper.getTransferKey())));
-                    if (DothanHelper.isDetailMode()) {
+                    Buffer encryptedBuffer = new BufferFactoryImpl().buffer(Objects.requireNonNull(CryptAgentOfAES.encryptBytes(buffer.getBytes(), DothanConfig.getInstance().getTransferKey())));
+                    if (DothanConfig.getInstance().isVerbose()) {
                         LoggerFactory.getLogger(DothanConnection.this.getClass()).info("From CLIENT [" + clientSocket.remoteAddress() + "], request length: " + buffer.length() + " ENCRYPT result length: " + encryptedBuffer.length());
                     }
                     serverSocket.write(encryptedBuffer);
                     break;
                 case PLAIN:
                 default:
-                    if (DothanHelper.isDetailMode()) {
+                    if (DothanConfig.getInstance().isVerbose()) {
                         LoggerFactory.getLogger(DothanConnection.this.getClass()).info("From CLIENT [" + clientSocket.remoteAddress() + "], request length: " + buffer.length());
                     }
                     serverSocket.write(buffer);
@@ -59,7 +60,7 @@ public class DothanConnection {
 
         });
         serverSocket.handler(buffer -> {
-            if (DothanHelper.isDetailMode()) {
+            if (DothanConfig.getInstance().isVerbose()) {
                 LoggerFactory.getLogger(this.getClass()).info("From SERVICE PROVIDER [" + serverSocket.remoteAddress() + "], response length: " + buffer.length());
 //                DothanHelper.logger.info(buffer);
 //                DothanHelper.logger.info(buffer.getString(0, buffer.length()));

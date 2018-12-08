@@ -24,10 +24,10 @@ public class CryptAgentOfAESNoPadding extends CryptAgent {
         byte[] plaintext = new byte[plaintextLength];
         System.arraycopy(dataBytes, 0, plaintext, 0, dataBytes.length);
 
-        SecretKeySpec keyspec = new SecretKeySpec(key.getBytes(), "AES");
-        IvParameterSpec ivspec = new IvParameterSpec(iv.getBytes());
+        SecretKeySpec keySpec = new SecretKeySpec(key.getBytes(), "AES");
+        IvParameterSpec ivSpec = new IvParameterSpec(iv.getBytes());
 
-        cipher.init(Cipher.ENCRYPT_MODE, keyspec, ivspec);
+        cipher.init(Cipher.ENCRYPT_MODE, keySpec, ivSpec);
         byte[] encrypted = cipher.doFinal(plaintext);
 
         return encryptBASE64(encrypted);
@@ -42,9 +42,9 @@ public class CryptAgentOfAESNoPadding extends CryptAgent {
         // debug
         //cipher.init(Cipher.DECRYPT_MODE, new SecretKeySpec(key.getBytes(), "AES"));
 
-        SecretKeySpec keyspec = new SecretKeySpec(key.getBytes(), "AES");
-        IvParameterSpec ivspec = new IvParameterSpec(iv.getBytes());
-        cipher.init(Cipher.DECRYPT_MODE, keyspec, ivspec);
+        SecretKeySpec keySpec = new SecretKeySpec(key.getBytes(), "AES");
+        IvParameterSpec ivSpec = new IvParameterSpec(iv.getBytes());
+        cipher.init(Cipher.DECRYPT_MODE, keySpec, ivSpec);
 
         byte[] original = cipher.doFinal(encrypted1);
 
@@ -53,8 +53,7 @@ public class CryptAgentOfAESNoPadding extends CryptAgent {
             if (original[len - 1] != 0) break;
         }
 
-        String originalString = new String(original, 0, len);
-        return originalString;
+        return new String(original, 0, len);
     }
 
     public static void main(String[] args) {

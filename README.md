@@ -53,10 +53,16 @@ Run Dothan quickly for one proxy, *h*ost, *p*ort and *l*isten port are required,
 
 You should provide a config file as *c*onfig parameter.
 
-The config file should contain one or more lines and each for one proxy plan. 
+The config file should contain one or more lines and each for one proxy requirement.
+The format is `[LISTEN_PORT]:[SERVER_HOST]:[SERVER_PORT]` as of 5.0. 
+Previous format `[LISTEN_PORT] [SERVER_HOST]:[SERVER_PORT]` is still supported though not recommended now. 
+
 The lines with leading Sharp(#) would be treated as comments. 
+
 The lines with leading Plus(+) would be treated as IP Address in whitelist. If no such lines, whitelist is ignored.
+
 The lines with leading Minus(-) would be treated as IP Address in blacklist. If no such lines, blacklist is ignored.
+
 Here is an example:
 
 ````
@@ -65,8 +71,8 @@ Here is an example:
 + 127.0.0.1
 - 192.168.0.2
 
-20001 1.rds.aliyuncs.com:3306
-20002 2.rds.aliyuncs.com:3306
+20001:1.rds.aliyuncs.com:3306
+20002:2.rds.aliyuncs.com:3306
 ````
 
 The command would be as following if the config file path is  `/path/to/Dothan.config`.
@@ -81,17 +87,17 @@ This relies on the version declaration in configuration file as a line:
 
     # Dothan Config Version VERSION_CODE
 
-The version code should be an integer. 
-If there are more than one line in this format, only the first would be used. 
+The version code should be an *positive* integer. 
+If there are more than one line in this format, the last would be used. 
 The file would be watched by the Dothan process and update config if the current version code became greater.
 
 Since version 3.1, Dothan uses WatchService for hot update function, and provide a parameter (-k) to disable hot update.
 
-## Road Relay Mode
+## Translate Mode
 
 We have to admit, the network is not so safe. That is why the service provider make databases not accessible from outside.
 However, we have certain time to access to such service, but we may be afraid that our connections would be seen by others through public network.
-So we might use the road relay mode to pass our data by.
+So we might use the translate mode to pass our data encrypted.
 
 ````
                   [CLIENT] 
@@ -109,6 +115,29 @@ So we might use the road relay mode to pass our data by.
              [SERVICE PROVIDER]
 ````
 
+On `DOTHAN LOCAL` the config file should contain transfer mode `ENCRYPT` and key.
+
+```
+# MODE ENCRYPT
+# TRANSFER KEY t8o7diugf8iauyvge8iu
+
+[DOTHAN_LOCAL_PORT]:[DOTHAN_REMOTE_ADDRESS]:[DOTHAN_REMOTE_PORT]
+
+```
+
+While on `DOTHAN REMOTE` the config file should contain transfer mode `DECRYPT` and key.
+
+```
+# MODE DECRYPT
+# TRANSFER KEY t8o7diugf8iauyvge8iu
+
+[DOTHAN_REMOTE_PORT]:[SERVER_ADDRESS]:[SERVER_PORT]
+
+```
+
+So your request sent to the `DOTHAN_LOCAL_PORT` of `DOTHAN LOCAL` would be transferred to `DOTHAN REMOTE` and finally reach the actual service provider. 
+
+If you like, you can use more than one Dothan pair to make the connection chain.
 
 ----
 

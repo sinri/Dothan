@@ -1,17 +1,14 @@
-import DothanProxy.DothanConfigItem;
-import DothanProxy.DothanConfigParser;
-import DothanProxy.DothanHelper;
+import Config.DothanConfig;
+import DothanProxy.DothanProxyRequirement;
 import DothanProxy.DothanVerticle;
 import io.vertx.core.Vertx;
 import io.vertx.core.logging.LoggerFactory;
 import org.apache.commons.cli.*;
-import org.apache.commons.validator.routines.InetAddressValidator;
 
 import java.io.File;
 import java.nio.file.*;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashSet;
 
 public class Dothan {
     private static Vertx instance;
@@ -41,167 +38,121 @@ public class Dothan {
         try {
             CommandLine options = new DefaultParser().parse(ops, args);
 
-            ArrayList<DothanConfigItem> dothanVerticleConfigs = new ArrayList<>();
+            //ArrayList<DothanProxyRequirement> dothanVerticleConfigs = new ArrayList<>();
 
             if (options.hasOption("help")) {
                 help(ops);
                 return;
             }
 
-            int configVersion;
-            DothanConfigParser dothanConfigParser = null;
+            int configVersion = -1;
+            //DothanConfigParser dothanConfigParser = null;
             String configFilePath = "";
 
             boolean hotConfigOff = options.hasOption("k");
 
+            DothanConfig dothanConfig = DothanConfig.getInstance();
+
             if (options.hasOption("c")) {
                 configFilePath = options.getOptionValue("c", "dothan.config");
-                dothanConfigParser = new DothanConfigParser(configFilePath);
-                ArrayList<DothanConfigItem> configItems = dothanConfigParser.getConfigItems();
-                configVersion = dothanConfigParser.getVersion();
-                LoggerFactory.getLogger(Dothan.class).info("dothanConfigParser read version: " + configVersion);
-                dothanVerticleConfigs.addAll(configItems);
-                DothanVerticle.whitelist = dothanConfigParser.getClientIPWhiteList();
-                DothanVerticle.blacklist = dothanConfigParser.getClientIPBlackList();
-
-                DothanHelper.setTransferMode(dothanConfigParser.getTransferMode());
-                DothanHelper.setTransferKey(dothanConfigParser.getTransferKey());
+                dothanConfig.setConfigFilePath(configFilePath);
+                dothanConfig.loadFromConfigFile();
+                configVersion = dothanConfig.getVersion();
             } else {
                 if (options.hasOption("h") && options.hasOption("p") && options.hasOption("l")) {
-                    String vh = "127.0.0.1";
-                    String vp = "3306";
-                    String vl = "20001";
-                    vh = options.getOptionValue("h", vh);
-                    vp = options.getOptionValue("p", vp);
-                    vl = options.getOptionValue("l", vl);
-
-                    DothanConfigItem dv = new DothanConfigItem(vh, Integer.parseInt(vp), Integer.parseInt(vl));
-                    dothanVerticleConfigs.add(dv);
-
-                    if (options.hasOption("w")) {
-                        HashSet<String> set = new HashSet<>();
-                        for (String ip : options.getOptionValue("w", "").split(",")) {
-                            if (InetAddressValidator.getInstance().isValid(ip)) {
-                                set.add(ip);
-                            }
-                        }
-                        if (!set.isEmpty()) {
-                            DothanVerticle.whitelist = set;
-                        }
-                    }
-                    if (options.hasOption("b")) {
-                        HashSet<String> set = new HashSet<>();
-                        for (String ip : options.getOptionValue("b", "").split(",")) {
-                            if (InetAddressValidator.getInstance().isValid(ip)) {
-                                set.add(ip);
-                            }
-                        }
-                        if (!set.isEmpty()) {
-                            DothanVerticle.blacklist = set;
-                        }
-                    }
-
-                    configVersion = -1;
+                    dothanConfig.loadFromCommandLineOptions(options);
+                    hotConfigOff = true; // use command line arguments as option so always keep mode
                 } else {
-                    //throw new Exception("If [c]onfig not given, [h]ost, [p]ort and [l]isten port are required!");
-                    //configFilePath = "dothan.config";
                     help(ops);
                     return;
                 }
             }
 
-            DothanHelper.setDetailMode(options.hasOption("d"));
+            //DothanHelper.setDetailMode(options.hasOption("d"));
+            dothanConfig.setVerbose(options.hasOption("d"));
 
-            Dothan.deployAll(dothanVerticleConfigs);
+            Dothan.deployAll(dothanConfig.getDothanProxyRequirements());
 
-            LoggerFactory.getLogger(Dothan.class).debug("dothanConfigParser:" + dothanConfigParser);
-            LoggerFactory.getLogger(Dothan.class).debug("configFilePath:" + configFilePath);
+            LoggerFactory.getLogger(Dothan.class).info("Dothan Main Deployment Done");
 
-            if (dothanConfigParser == null || configFilePath.equals("") || hotConfigOff) {
-                return;
-            }
+            if (!hotConfigOff) {
+                WatchService watchService = FileSystems.getDefault().newWatchService();
+                String dir_to_monitor = (new File(configFilePath)).getAbsoluteFile().getParent();
+                String pure_file_name = (new File(configFilePath)).getName();
+                LoggerFactory.getLogger(Dothan.class).debug("dir_to_monitor:" + dir_to_monitor + " and file: " + pure_file_name);
+                final Path path = Paths.get(dir_to_monitor);
+                path.register(
+                        watchService,
+                        StandardWatchEventKinds.ENTRY_MODIFY,
+                        StandardWatchEventKinds.ENTRY_CREATE
+                );
 
-            WatchService watchService = FileSystems.getDefault().newWatchService();
-            String dir_to_monitor = (new File(configFilePath)).getAbsoluteFile().getParent();
-            String pure_file_name = (new File(configFilePath)).getName();
-            LoggerFactory.getLogger(Dothan.class).debug("dir_to_monitor:" + dir_to_monitor + " and file: " + pure_file_name);
-            final Path path = Paths.get(dir_to_monitor);
-            path.register(
-                    watchService,
-                    StandardWatchEventKinds.ENTRY_MODIFY,
-                    StandardWatchEventKinds.ENTRY_CREATE
-            );
-            while (true) {
-                boolean configFileChanged = checkFileChange(watchService, pure_file_name);
-                if (!configFileChanged) continue;
-                final String[] stateMachine = {DothanHotUpdateVersionStateOfWatching};
-                int checkingVersion;
+                //noinspection InfiniteLoopStatement
                 while (true) {
-                    switch (stateMachine[0]) {
-                        case DothanHotUpdateVersionStateOfWatching:
-                            checkingVersion = dothanConfigParser.getVersion();
-                            LoggerFactory.getLogger(Dothan.class).debug("Check version [" + checkingVersion + "] against loaded version " + configVersion);
-                            if (checkingVersion > configVersion) {
-                                // a new version came
-                                LoggerFactory.getLogger(Dothan.class).info("Ready to reload version " + checkingVersion);
+                    boolean configFileChanged = checkFileChange(watchService, pure_file_name);
+                    if (!configFileChanged) continue;
+                    final String[] stateMachine = {DothanHotUpdateVersionStateOfWatching};
+                    int checkingVersion;
+                    while (true) {
+                        switch (stateMachine[0]) {
+                            case DothanHotUpdateVersionStateOfWatching:
+                                dothanConfig.loadFromConfigFile();
+                                checkingVersion = dothanConfig.getVersion();
+                                LoggerFactory.getLogger(Dothan.class).debug("Check version [" + checkingVersion + "] against loaded version " + configVersion);
+                                if (checkingVersion > configVersion) {
+                                    // a new version came
+                                    LoggerFactory.getLogger(Dothan.class).info("Ready to reload version " + checkingVersion);
+                                    stateMachine[0] = DothanHotUpdateVersionStateOfClosing;
+                                    getInstance().close(voidAsyncResult -> {
+                                        if (voidAsyncResult.succeeded()) {
+                                            LoggerFactory.getLogger(Dothan.class).info("instance closed");
+                                            stateMachine[0] = DothanHotUpdateVersionStateOfClosed;
+                                            instance = null;
+                                        } else {
+                                            LoggerFactory.getLogger(Dothan.class).error("instance failed to close! " + voidAsyncResult.cause().getMessage());
+                                            stateMachine[0] = DothanHotUpdateVersionStateOfCloseFailed;
+                                        }
+                                    });
+                                }
+                                break;
+                            case DothanHotUpdateVersionStateOfClosing:
+                                // do nothing
+                                LoggerFactory.getLogger(Dothan.class).debug("waiting for instance closing");
+                                break;
+                            case DothanHotUpdateVersionStateOfCloseFailed:
+                                // try again
+                                LoggerFactory.getLogger(Dothan.class).info("failed to close let us try again");
                                 stateMachine[0] = DothanHotUpdateVersionStateOfClosing;
                                 getInstance().close(voidAsyncResult -> {
                                     if (voidAsyncResult.succeeded()) {
-                                        LoggerFactory.getLogger(Dothan.class).info("instance closed");
+                                        LoggerFactory.getLogger(Dothan.class).info("instance closed after failed");
                                         stateMachine[0] = DothanHotUpdateVersionStateOfClosed;
                                         instance = null;
+                                        //deploymentIdList.clear();
                                     } else {
-                                        LoggerFactory.getLogger(Dothan.class).error("instance failed to close! " + voidAsyncResult.cause().getMessage());
+                                        LoggerFactory.getLogger(Dothan.class).error("instance failed to close again! " + voidAsyncResult.cause().getMessage());
                                         stateMachine[0] = DothanHotUpdateVersionStateOfCloseFailed;
                                     }
                                 });
-                            }
-                            break;
-                        case DothanHotUpdateVersionStateOfClosing:
-                            // do nothing
-                            LoggerFactory.getLogger(Dothan.class).debug("waiting for instance closing");
-                            break;
-                        case DothanHotUpdateVersionStateOfCloseFailed:
-                            // try again
-                            LoggerFactory.getLogger(Dothan.class).info("failed to close let us try again");
-                            stateMachine[0] = DothanHotUpdateVersionStateOfClosing;
-                            getInstance().close(voidAsyncResult -> {
-                                if (voidAsyncResult.succeeded()) {
-                                    LoggerFactory.getLogger(Dothan.class).info("instance closed after failed");
-                                    stateMachine[0] = DothanHotUpdateVersionStateOfClosed;
-                                    instance = null;
-                                    //deploymentIdList.clear();
-                                } else {
-                                    LoggerFactory.getLogger(Dothan.class).error("instance failed to close again! " + voidAsyncResult.cause().getMessage());
-                                    stateMachine[0] = DothanHotUpdateVersionStateOfCloseFailed;
-                                }
-                            });
-                            break;
-                        case DothanHotUpdateVersionStateOfClosed:
-                            //deploy
-                            LoggerFactory.getLogger(Dothan.class).info("instance closed so deploy new config");
-                            ArrayList<DothanConfigItem> configItems = dothanConfigParser.getConfigItems();
-                            dothanVerticleConfigs.clear();
-                            dothanVerticleConfigs.addAll(configItems);
+                                break;
+                            case DothanHotUpdateVersionStateOfClosed:
+                                //deploy
+                                LoggerFactory.getLogger(Dothan.class).info("instance closed so deploy new config");
+                                Dothan.deployAll(dothanConfig.getDothanProxyRequirements());
+                                configVersion = dothanConfig.getVersion();
+                                LoggerFactory.getLogger(Dothan.class).info("Reloaded version " + configVersion);
+                                stateMachine[0] = DothanHotUpdateVersionStateOfWatching;
+                                break;
+                        }
 
-                            DothanVerticle.whitelist = dothanConfigParser.getClientIPWhiteList();
-                            DothanVerticle.blacklist = dothanConfigParser.getClientIPBlackList();
-
-                            Dothan.deployAll(dothanVerticleConfigs);
-                            configVersion = dothanConfigParser.getVersion();
-                            LoggerFactory.getLogger(Dothan.class).info("Reloaded version " + configVersion);
-                            stateMachine[0] = DothanHotUpdateVersionStateOfWatching;
+                        if (stateMachine[0].equals(DothanHotUpdateVersionStateOfClosing) || stateMachine[0].equals(DothanHotUpdateVersionStateOfCloseFailed)) {
+                            Thread.sleep(1000);
+                        } else if (stateMachine[0].equals(DothanHotUpdateVersionStateOfWatching)) {
                             break;
-                    }
-
-                    if (stateMachine[0].equals(DothanHotUpdateVersionStateOfClosing) || stateMachine[0].equals(DothanHotUpdateVersionStateOfCloseFailed)) {
-                        Thread.sleep(1000);
-                    } else if (stateMachine[0].equals(DothanHotUpdateVersionStateOfWatching)) {
-                        break;
+                        }
                     }
                 }
             }
-
         } catch (ParseException e) {
             LoggerFactory.getLogger(Dothan.class).error("解析参数失败，参数：[" + Arrays.asList(args).toString() + "] ! " + e.getMessage());
         } catch (Exception e) {
@@ -233,7 +184,7 @@ public class Dothan {
     private final static String DothanHotUpdateVersionStateOfClosed = "closed";
     private final static String DothanHotUpdateVersionStateOfCloseFailed = "close_failed";
 
-    private static void deployAll(ArrayList<DothanConfigItem> dothanVerticleConfigs) {
+    private static void deployAll(ArrayList<DothanProxyRequirement> dothanVerticleConfigs) {
         dothanVerticleConfigs.forEach(dothanVerticleConfig -> {
             DothanVerticle dothanVerticle = new DothanVerticle(dothanVerticleConfig);
             LoggerFactory.getLogger(Dothan.class).info("Ready to listen on port " + dothanVerticleConfig.listenPort + " " +
