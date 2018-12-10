@@ -21,7 +21,7 @@ public class Dothan {
     }
 
     public static void main(String[] args) {
-        System.out.println("Dothan 5.0");
+        System.out.println("Dothan 5.1");
 
         Options ops = new Options();
         ops.addOption("help", "Display help information");
@@ -154,10 +154,10 @@ public class Dothan {
                 }
             }
         } catch (ParseException e) {
-            LoggerFactory.getLogger(Dothan.class).error("解析参数失败，参数：[" + Arrays.asList(args).toString() + "] ! " + e.getMessage());
+            LoggerFactory.getLogger(Dothan.class).fatal("解析参数失败，参数：[" + Arrays.asList(args).toString() + "] ! " + e.getMessage());
         } catch (Exception e) {
             e.printStackTrace();
-            LoggerFactory.getLogger(Dothan.class).error(e.getMessage());
+            LoggerFactory.getLogger(Dothan.class).fatal(e.getMessage());
         }
     }
 
@@ -188,7 +188,7 @@ public class Dothan {
         dothanVerticleConfigs.forEach(dothanVerticleConfig -> {
             DothanVerticle dothanVerticle = new DothanVerticle(dothanVerticleConfig);
             LoggerFactory.getLogger(Dothan.class).info("Ready to listen on port " + dothanVerticleConfig.listenPort + " " +
-                    "for database " + dothanVerticleConfig.serverHost + ":" + dothanVerticleConfig.serverPort);
+                    "for SERVICE PROVIDER " + dothanVerticleConfig.serverHost + ":" + dothanVerticleConfig.serverPort);
             getInstance().deployVerticle(dothanVerticle, res -> {
                 if (res.succeeded()) {
                     LoggerFactory.getLogger(Dothan.class).info("Deployment id is: " + res.result() + " ! " + dothanVerticleConfig.listenPort + " for " + dothanVerticleConfig.serverHost + ":" + dothanVerticleConfig.serverPort);

@@ -7,6 +7,7 @@ import io.vertx.core.buffer.impl.BufferFactoryImpl;
 import io.vertx.core.logging.LoggerFactory;
 import io.vertx.core.net.NetSocket;
 
+import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 
 class DothanConnection {
@@ -39,6 +40,7 @@ class DothanConnection {
                     Buffer decryptedBuffer = new BufferFactoryImpl().buffer(Objects.requireNonNull(CryptAgentOfAES.decryptBytes(buffer.getBytes(), DothanConfig.getInstance().getTransferKey())));
                     if (DothanConfig.getInstance().isVerbose()) {
                         LoggerFactory.getLogger(DothanConnection.this.getClass()).info("From CLIENT [" + clientSocket.remoteAddress() + "], request length: " + buffer.length() + " DECRYPT result length: " + decryptedBuffer.length());
+                        LoggerFactory.getLogger(this.getClass()).debug("FROM CLIENT [" + clientSocket.remoteAddress() + "] Received(decrypted):\n" + decryptedBuffer.toString(StandardCharsets.UTF_8));
                     }
                     serverSocket.write(decryptedBuffer);
                     break;
@@ -46,6 +48,7 @@ class DothanConnection {
                     Buffer encryptedBuffer = new BufferFactoryImpl().buffer(Objects.requireNonNull(CryptAgentOfAES.encryptBytes(buffer.getBytes(), DothanConfig.getInstance().getTransferKey())));
                     if (DothanConfig.getInstance().isVerbose()) {
                         LoggerFactory.getLogger(DothanConnection.this.getClass()).info("From CLIENT [" + clientSocket.remoteAddress() + "], request length: " + buffer.length() + " ENCRYPT result length: " + encryptedBuffer.length());
+                        LoggerFactory.getLogger(this.getClass()).debug("FROM CLIENT [" + clientSocket.remoteAddress() + "] Received(original):\n" + buffer.toString(StandardCharsets.UTF_8));
                     }
                     serverSocket.write(encryptedBuffer);
                     break;
@@ -53,6 +56,7 @@ class DothanConnection {
                 default:
                     if (DothanConfig.getInstance().isVerbose()) {
                         LoggerFactory.getLogger(DothanConnection.this.getClass()).info("From CLIENT [" + clientSocket.remoteAddress() + "], request length: " + buffer.length());
+                        LoggerFactory.getLogger(this.getClass()).debug("FROM CLIENT [" + clientSocket.remoteAddress() + "] Received(plain):\n" + buffer.toString(StandardCharsets.UTF_8));
                     }
                     serverSocket.write(buffer);
                     break;
@@ -62,6 +66,7 @@ class DothanConnection {
         serverSocket.handler(buffer -> {
             if (DothanConfig.getInstance().isVerbose()) {
                 LoggerFactory.getLogger(this.getClass()).info("From SERVICE PROVIDER [" + serverSocket.remoteAddress() + "], response length: " + buffer.length());
+                LoggerFactory.getLogger(this.getClass()).debug("FROM SERVICE PROVIDER [" + serverSocket.remoteAddress() + "] Received:\n" + buffer.toString(StandardCharsets.UTF_8));
 //                DothanHelper.logger.info(buffer);
 //                DothanHelper.logger.info(buffer.getString(0, buffer.length()));
             }
