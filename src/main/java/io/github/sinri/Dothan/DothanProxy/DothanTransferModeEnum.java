@@ -1,4 +1,4 @@
-package DothanProxy;
+package io.github.sinri.Dothan.DothanProxy;
 
 public enum DothanTransferModeEnum {
     PLAIN("PLAIN"),

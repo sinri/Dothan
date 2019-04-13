@@ -1,4 +1,4 @@
-package Security;
+package io.github.sinri.Dothan.Security;
 
 import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
