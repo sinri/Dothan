@@ -10,6 +10,26 @@ A light TCP proxy. You can take it as MySQL proxy, might also work for SSH.
 
 Since Version 6, new package `io.github.sinri.Dothan` is adopted to the this project.
 
+## Maven Access
+
+[OSS-SONATYPE](https://oss.sonatype.org/content/groups/public/io/github/sinri/Dothan/)
+
+```xml
+<dependency>
+  <groupId>io.github.sinri</groupId>
+  <artifactId>Dothan</artifactId>
+  <version>6.0.1</version>
+</dependency>
+```
+
+### Deploy Note
+
+You should export your `JAVA_HOME` first. In Mac OS X, you may run `/usr/libexec/java_home` to get correct path for it.
+
+Commonly snapshot is used for quick deploy with default version tag `6.0-SNAPSHOT` or so, run `mvn clean package deploy -P snapshot` to update. 
+
+To release new version to OSS-SONATYPE, run `mvn clean package deploy -P release` after correcting the version.
+
 ## Environment
 
 * Java 8
