@@ -32,7 +32,7 @@ public class DothanVerticle extends AbstractVerticle {
         NetServer netServer = vertx.createNetServer();//创建代理服务器
         NetClient netClient = vertx.createNetClient();//创建连接mysql客户端
         netServer.connectHandler(socket -> {
-            LoggerFactory.getLogger(this.getClass()).info("io.github.sinri.Dothan.Dothan Verticle Connect Handler set up for " + socket.remoteAddress() + " which come to " + socket.localAddress());
+            LoggerFactory.getLogger(this.getClass()).info("Dothan Verticle Connect Handler set up for " + socket.remoteAddress() + " which come to " + socket.localAddress());
             netClient.connect(serverPort, serverHost, result -> {
                 //响应来自客户端的连接请求，观测客户端IP，成功之后，建立一个与目标mysql服务器的连接
                 if (result.succeeded()) {

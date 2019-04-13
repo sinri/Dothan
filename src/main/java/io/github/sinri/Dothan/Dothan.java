@@ -75,7 +75,7 @@ public class Dothan {
 
             Dothan.deployAll(dothanConfig.getDothanProxyRequirements());
 
-            LoggerFactory.getLogger(Dothan.class).info("io.github.sinri.Dothan.Dothan Main Deployment Done");
+            LoggerFactory.getLogger(Dothan.class).info("Dothan Main Deployment Done");
 
             if (!hotConfigOff) {
                 WatchService watchService = FileSystems.getDefault().newWatchService();
