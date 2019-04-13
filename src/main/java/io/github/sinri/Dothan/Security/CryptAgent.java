@@ -4,7 +4,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Base64;
 
-public class CryptAgent {
+class CryptAgent {
 
     /**
      * BASE64Encoder 加密
@@ -12,7 +12,7 @@ public class CryptAgent {
      * @param data 要加密的数据
      * @return 加密后的字符串
      */
-    public static String encryptBASE64(byte[] data) {
+    static String encryptBASE64(byte[] data) {
         // BASE64Encoder encoder = new BASE64Encoder();
         // String encode = encoder.encode(data);
         // 从JKD 9开始rt.jar包已废除，从JDK 1.8开始使用java.util.Base64.Encoder
@@ -26,7 +26,7 @@ public class CryptAgent {
      * @param data 要解密的字符串
      * @return 解密后的byte[]
      */
-    public static byte[] decryptBASE64(String data) {
+    static byte[] decryptBASE64(String data) {
         // BASE64Decoder decoder = new BASE64Decoder();
         // byte[] buffer = decoder.decodeBuffer(data);
         // 从JKD 9开始rt.jar包已废除，从JDK 1.8开始使用java.util.Base64.Decoder
@@ -34,14 +34,14 @@ public class CryptAgent {
         return decoder.decode(data);
     }
 
-    public static String md5(String str) throws NoSuchAlgorithmException {
+    private static String md5(String str) throws NoSuchAlgorithmException {
         MessageDigest md5 = MessageDigest.getInstance("MD5");
         md5.update(str.getBytes());
         byte[] resultArray = md5.digest();
         return byteArrayToHex(resultArray);
     }
 
-    public static String byteArrayToHex(byte[] byteArray) {
+    private static String byteArrayToHex(byte[] byteArray) {
         char[] hexDigits = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'};
         char[] resultCharArray = new char[byteArray.length * 2];
         int index = 0;
@@ -52,7 +52,7 @@ public class CryptAgent {
         return new String(resultCharArray);
     }
 
-    protected static String[] getKeyAndIv(String token) throws NoSuchAlgorithmException {
+    static String[] getKeyAndIv(String token) throws NoSuchAlgorithmException {
         String md5 = md5(token);
         String[] keyAndIv = new String[2];
 

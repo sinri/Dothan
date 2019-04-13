@@ -14,12 +14,12 @@ class DothanConnection {
     private final NetSocket clientSocket;
     private final NetSocket serverSocket;
 
-    public DothanConnection(NetSocket clientSocket, NetSocket serverSocket) {
+    DothanConnection(NetSocket clientSocket, NetSocket serverSocket) {
         this.clientSocket = clientSocket;
         this.serverSocket = serverSocket;
     }
 
-    public void proxy() {
+    void proxy() {
         //当代理与mysql服务器连接关闭时，关闭client与代理的连接
         serverSocket.closeHandler(v -> clientSocket.close());
         //反之亦然
@@ -80,7 +80,7 @@ class DothanConnection {
         //serverSocket.handler(clientSocket::write);
     }
 
-    public void close() {
+    private void close() {
         clientSocket.close();
         serverSocket.close();
     }
