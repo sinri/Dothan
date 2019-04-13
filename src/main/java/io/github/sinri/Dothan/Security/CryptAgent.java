@@ -1,4 +1,4 @@
-package Security;
+package io.github.sinri.Dothan.Security;
 
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;

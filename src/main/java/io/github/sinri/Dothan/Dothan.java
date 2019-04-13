@@ -1,6 +1,8 @@
-import Config.DothanConfig;
-import DothanProxy.DothanProxyRequirement;
-import DothanProxy.DothanVerticle;
+package io.github.sinri.Dothan;
+
+import io.github.sinri.Dothan.Config.DothanConfig;
+import io.github.sinri.Dothan.DothanProxy.DothanProxyRequirement;
+import io.github.sinri.Dothan.DothanProxy.DothanVerticle;
 import io.vertx.core.Vertx;
 import io.vertx.core.logging.LoggerFactory;
 import org.apache.commons.cli.*;
@@ -21,7 +23,7 @@ public class Dothan {
     }
 
     public static void main(String[] args) {
-        System.out.println("Dothan 5.1");
+        System.out.println("Dothan 6.0");
 
         Options ops = new Options();
         ops.addOption("help", "Display help information");
@@ -73,7 +75,7 @@ public class Dothan {
 
             Dothan.deployAll(dothanConfig.getDothanProxyRequirements());
 
-            LoggerFactory.getLogger(Dothan.class).info("Dothan Main Deployment Done");
+            LoggerFactory.getLogger(Dothan.class).info("io.github.sinri.Dothan.Dothan Main Deployment Done");
 
             if (!hotConfigOff) {
                 WatchService watchService = FileSystems.getDefault().newWatchService();

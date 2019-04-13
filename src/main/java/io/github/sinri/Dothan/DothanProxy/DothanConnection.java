@@ -1,7 +1,7 @@
-package DothanProxy;
+package io.github.sinri.Dothan.DothanProxy;
 
-import Config.DothanConfig;
-import Security.CryptAgentOfAES;
+import io.github.sinri.Dothan.Config.DothanConfig;
+import io.github.sinri.Dothan.Security.CryptAgentOfAES;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.buffer.impl.BufferFactoryImpl;
 import io.vertx.core.logging.LoggerFactory;

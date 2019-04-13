@@ -2,11 +2,13 @@
 
 A light TCP proxy. You can take it as MySQL proxy, might also work for SSH.
 
-_其实我就是嫌弃阿里云的RDS，白名单还不能像ECS挂安全组。_ 
-
 > And the man said, They are departed hence; for I heard them say, Let us go to Dothan. And Joseph went after his brethren, and found them in Dothan. (Genesis 37:17 )
 
 > And he said, Go and spy where he [is], that I may send and fetch him. And it was told him, saying, Behold, [he is] in Dothan....And Elisha said unto them, This [is] not the way, neither [is] this the city: follow me, and I will bring you to the man whom ye seek. But he led them to Samaria. (2 Kings 6:13,19)
+
+## Package
+
+Since Version 6, new package `io.github.sinri.Dothan` is adopted to the this project.
 
 ## Environment
 

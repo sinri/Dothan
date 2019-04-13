@@ -1,6 +1,6 @@
-package DothanProxy;
+package io.github.sinri.Dothan.DothanProxy;
 
-import Config.DothanConfig;
+import io.github.sinri.Dothan.Config.DothanConfig;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.logging.LoggerFactory;
 import io.vertx.core.net.NetClient;
@@ -32,7 +32,7 @@ public class DothanVerticle extends AbstractVerticle {
         NetServer netServer = vertx.createNetServer();//创建代理服务器
         NetClient netClient = vertx.createNetClient();//创建连接mysql客户端
         netServer.connectHandler(socket -> {
-            LoggerFactory.getLogger(this.getClass()).info("Dothan Verticle Connect Handler set up for " + socket.remoteAddress() + " which come to " + socket.localAddress());
+            LoggerFactory.getLogger(this.getClass()).info("io.github.sinri.Dothan.Dothan Verticle Connect Handler set up for " + socket.remoteAddress() + " which come to " + socket.localAddress());
             netClient.connect(serverPort, serverHost, result -> {
                 //响应来自客户端的连接请求，观测客户端IP，成功之后，建立一个与目标mysql服务器的连接
                 if (result.succeeded()) {
@@ -67,10 +67,21 @@ public class DothanVerticle extends AbstractVerticle {
                         "listening local port " + listenPort + ", actual port " + listenResult.result().actualPort());
             } else {
                 //启动代理服务器失败
+                int actualPort = -1;
+                if (listenResult.result() != null) actualPort = listenResult.result().actualPort();
+                LoggerFactory.getLogger(this.getClass()).error("listenResult.result is " + listenResult.result());
                 LoggerFactory.getLogger(this.getClass()).error("PROXY exit for SERVICE PROVIDER " + serverHost + ":" + serverPort + " " +
-                        "and listen port " + listenPort + ", actual port " + listenResult.result().actualPort() +
-                        "Reason: " + listenResult.cause().getMessage(), listenResult.cause());
-                System.exit(1);
+                        "and listen port " + listenPort + ", actual port " + actualPort +
+                        " Reason: " + listenResult.cause().getMessage(), listenResult.cause());
+                //System.exit(1);
+                try {
+                    LoggerFactory.getLogger(this.getClass()).warn("Let this DothanVerticle stop. " +
+                            "This would never be started again until next restart manually or called by new config version.");
+                    this.stop();
+                } catch (Exception e) {
+                    LoggerFactory.getLogger(this.getClass()).warn("Failed to make this DothanVerticle stop: " + e.getMessage());
+                    e.printStackTrace();
+                }
             }
         });
     }

@@ -1,4 +1,4 @@
-package DothanProxy;
+package io.github.sinri.Dothan.DothanProxy;
 
 public class DothanProxyRequirement {
     public String serverHost;

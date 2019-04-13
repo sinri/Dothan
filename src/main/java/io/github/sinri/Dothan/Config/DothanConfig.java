@@ -1,7 +1,7 @@
-package Config;
+package io.github.sinri.Dothan.Config;
 
-import DothanProxy.DothanProxyRequirement;
-import DothanProxy.DothanTransferModeEnum;
+import io.github.sinri.Dothan.DothanProxy.DothanProxyRequirement;
+import io.github.sinri.Dothan.DothanProxy.DothanTransferModeEnum;
 import io.vertx.core.logging.LoggerFactory;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.validator.routines.InetAddressValidator;
