@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Dothan</title>
+    <script src="https://unpkg.com/marked"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <script src="https://unpkg.com/vue@2.6.10/dist/vue.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/github-markdown-css@2.10.0/github-markdown.css">
+    <style>
+        .markdown-body {
+            min-height: 400px;
+        }
+    </style>
+</head>
+<body>
+<div id="app">
+    <div style="margin: 10px;border-bottom: solid 1px gray">
+        <div style="font-size: 40px;display: inline-block;width: 40%;float: left">Dothan</div>
+        <div style="font-size: 20px;display: inline-block;width: 40%;float:right;text-align: right">
+            <select id="lang_select" v-on:change="changeLang">
+                <option v-for="option in langOptions" :value="option.value">{{option.title}}</option>
+            </select>
+        </div>
+        <div style="clear: both"></div>
+    </div>
+    <div style="margin: 10px;border-bottom: solid 1px gray">
+        <article v-html="content" class="markdown-body"></article>
+    </div>
+    <div style="margin: 10px;text-align: center">
+        Copyright 2019 Sinri Edogawa
+    </div>
+</div>
+<script>
+    new Vue({
+        el: '#app',
+        data: {
+            lang: 'en_US',
+            page: 'main',
+            content: 'LOADING',
+            langOptions: [
+                {
+                    "value": "en_US",
+                    "title": "English"
+                },
+                {
+                    "value": "zh-Hans",
+                    "title": "简体中文"
+                },
+            ],
+        },
+        methods: {
+            loadContent: function (page, lang) {
+                axios.post("i18n/" + lang + "/" + page + ".md", {})
+                    .then((response) => {
+                        console.log("then", response);
+                        if (response.status !== 200 || !response.data) {
+                            //callbackForError(response.data, response.status);
+                            alert("Load failed!");
+                            return;
+                        }
+                        let body = response.data;
+                        console.log("success with data", body.data);
+                        //callbackForData(body.data);
+
+                        this.content = marked(response.data);
+                        this.lang = lang;
+                        this.page = page;
+                    })
+                    .catch((error) => {
+                        console.log("catch", error);
+                        //callbackForError(error, -1);
+                        alert("Caught Error: " + error);
+                    })
+            },
+            changeLang: function () {
+                let lang = document.getElementById("lang_select").value;
+                console.log("changeLang to ", lang);
+                this.loadContent(this.page, lang);
+            }
+        },
+        mounted: function () {
+            this.loadContent(this.page, this.lang)
+        }
+    })
+</script>
+</body>
+</html>
