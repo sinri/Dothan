@@ -1,5 +1,9 @@
 # Dothan
 
+![GitHub Release](https://img.shields.io/github/release/sinri/Dothan.svg)
+![GitHub](https://img.shields.io/github/license/sinri/Dothan.svg)
+[![Docs Site](https://img.shields.io/badge/link-docs-blue.svg)](https://sinri.github.io/Dothan/)
+
 A light TCP proxy. You can take it as MySQL proxy, might also work for SSH.
 
 > And the man said, They are departed hence; for I heard them say, Let us go to Dothan. And Joseph went after his brethren, and found them in Dothan. (Genesis 37:17 )
