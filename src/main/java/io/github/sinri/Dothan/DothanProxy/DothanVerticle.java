@@ -2,7 +2,7 @@ package io.github.sinri.Dothan.DothanProxy;
 
 import io.github.sinri.Dothan.Config.DothanConfig;
 import io.vertx.core.AbstractVerticle;
-import io.vertx.core.logging.LoggerFactory;
+import io.vertx.core.impl.logging.LoggerFactory;
 import io.vertx.core.net.NetClient;
 import io.vertx.core.net.NetServer;
 

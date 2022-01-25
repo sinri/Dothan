@@ -4,7 +4,7 @@ import io.github.sinri.Dothan.Config.DothanConfig;
 import io.github.sinri.Dothan.DothanProxy.DothanProxyRequirement;
 import io.github.sinri.Dothan.DothanProxy.DothanVerticle;
 import io.vertx.core.Vertx;
-import io.vertx.core.logging.LoggerFactory;
+import io.vertx.core.impl.logging.LoggerFactory;
 import org.apache.commons.cli.*;
 
 import java.io.File;
@@ -148,7 +148,7 @@ public class Dothan {
                         }
 
                         if (stateMachine[0].equals(DothanHotUpdateVersionStateOfClosing) || stateMachine[0].equals(DothanHotUpdateVersionStateOfCloseFailed)) {
-                            Thread.sleep(1000);
+                            Thread.sleep(500);
                         } else if (stateMachine[0].equals(DothanHotUpdateVersionStateOfWatching)) {
                             break;
                         }
@@ -156,10 +156,10 @@ public class Dothan {
                 }
             }
         } catch (ParseException e) {
-            LoggerFactory.getLogger(Dothan.class).fatal("解析参数失败，参数：[" + Arrays.asList(args).toString() + "] ! " + e.getMessage());
+            LoggerFactory.getLogger(Dothan.class).error("解析参数失败，参数：[" + Arrays.asList(args) + "] ! " + e.getMessage());
         } catch (Exception e) {
             e.printStackTrace();
-            LoggerFactory.getLogger(Dothan.class).fatal(e.getMessage());
+            LoggerFactory.getLogger(Dothan.class).error(e.getMessage());
         }
     }
 
