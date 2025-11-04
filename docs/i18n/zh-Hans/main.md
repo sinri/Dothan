@@ -2,14 +2,13 @@ Dothan 是一个轻量的TCP转发工具。
 
 ## 起源
 
-因为敝社项目多，所以大规模采购了阿里云的RDS。
-于是在日常运维中遇到了一个常见的问题，就是突发性的批量变更针对运维和开发用的IP白名单。
+采购了大量的云数据库，于是在日常运维中遇到了一个常见的问题，就是突发性的批量变更针对运维和开发用的IP白名单。
 为了这个去对接阿里云的API好像有点浪费，于是想出来一个折中的办法，将所有RDS对一个地址开放，然后在其上设置TCP转发。
 这样的话，变更只需要在转发上做一次就可以了。
 
-于是捣鼓了最早的试验版（v1），然后一点点加功能，一直到现在第六个大版本，已经出现在了Maven中央仓库。
+于是捣鼓了最早的试验版（v1），然后一点点加功能，一直到现在第7个大版本，已经出现在了Maven中央仓库。
 
-顺便，这个玩意可以破解聚石塔之类的此地无银三百两式的数据安（垄）全（断）策略。
+顺便，这个玩意可以解决某某塔的此地无银三百两式的数据安（垄）全（断）策略。
 
 Dothan 本身是一个地名，中文译名为多坍。
 
@@ -38,13 +37,13 @@ Dothan 本身是一个地名，中文译名为多坍。
 <dependency>
   <groupId>io.github.sinri</groupId>
   <artifactId>Dothan</artifactId>
-  <version>6.0.1</version>
+  <version>7.0.0</version>
 </dependency>
 ```
 
 ## 使用方法
 
-可执行文件为JAR包，需要通过JAVA环境运行。其基本的参数列表如下。
+可执行文件为JAR包，需要通过JAVA 17环境运行。其基本的参数列表如下。
 
 ```
 -b <arg>   blacklist, separate IP with comma (as of 4.0)
@@ -56,6 +55,7 @@ Dothan 本身是一个地名，中文译名为多坍。
 -l <arg>   listen local port
 -p <arg>   database port
 -w <arg>   whitelist, separate IP with comma (as of 4.0)
+-v         verbose
 ```
 
 如果你只是为了简单尝试下点对点代理功能，可以直接用命令行参数配置，不需要附带配置文件。
@@ -66,7 +66,7 @@ Dothan 本身是一个地名，中文译名为多坍。
 例如，有一个远端目标数据库（database.com:3306），中转到中转机的20001端口，并且将详情输出的话，可以在中转机运行如下指令。
 
 ```bash
-java -jar Dothan.jar -d -hdatabase.com -p3306 -l20001
+java -jar Dothan.jar -d -h database.com -p 3306 -l 20001
 ```
 
 成功启动代理后，远端的目标数据库的3306端口已经被映射到了中转机的20001端口。

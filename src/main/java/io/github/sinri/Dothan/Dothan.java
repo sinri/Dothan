@@ -27,6 +27,17 @@ public class Dothan {
         return instance;
     }
 
+    /**
+    /**
+     * The entry point of the Dothan application.
+     * <p>
+     * This method processes command-line arguments to configure and start the Dothan proxy server.
+     * Users can provide options via command-line to set configuration file, database host/port, 
+     * listening port, IP whitelist/blacklist, verbosity, and other settings.
+     * </p>
+     *
+     * @param args the command line arguments passed to the application.
+     */
     public static void main(String[] args) {
         Logger logger = LoggerFactory.getLogger(Dothan.class);
 
