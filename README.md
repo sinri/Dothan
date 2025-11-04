@@ -22,7 +22,7 @@ Since Version 6, new package `io.github.sinri.Dothan` is adopted to the this pro
 <dependency>
   <groupId>io.github.sinri</groupId>
   <artifactId>Dothan</artifactId>
-  <version>6.0.1</version>
+  <version>7.0.0</version>
 </dependency>
 ```
 
@@ -36,7 +36,7 @@ To release new version to OSS-SONATYPE, run `mvn clean package deploy -P release
 
 ## Environment
 
-* Java 8
+* Java 17
 
 ## Maven Dependencies
 
@@ -69,6 +69,7 @@ usage: options
      -l <arg>   listen local port
      -p <arg>   database port
      -w <arg>   whitelist, separate IP with comma (as of 4.0)
+     -v         verbose
 
 ### Quick Proxy 
 

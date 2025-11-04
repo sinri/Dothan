@@ -5,7 +5,7 @@ public enum DothanTransferModeEnum {
     ENCRYPT("ENCRYPT"),
     DECRYPT("DECRYPT");
 
-    private String name;
+    private final String name;
 
     // 定义一个带参数的构造器，枚举类的构造器只能使用 private 修饰
     DothanTransferModeEnum(String name) {
@@ -14,9 +14,5 @@ public enum DothanTransferModeEnum {
 
     public String getName() {
         return name;
-    }
-
-    public void setName(String name) {
-        this.name = name;
     }
 }

@@ -2,7 +2,7 @@ package io.github.sinri.Dothan.Config;
 
 import io.github.sinri.Dothan.DothanProxy.DothanProxyRequirement;
 import io.github.sinri.Dothan.DothanProxy.DothanTransferModeEnum;
-import io.vertx.core.logging.LoggerFactory;
+import io.vertx.core.internal.logging.LoggerFactory;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.validator.routines.InetAddressValidator;
 
@@ -78,54 +78,57 @@ public class DothanConfig {
     }
 
     public void loadFromConfigFile() throws IOException {
+        var logger=LoggerFactory.getLogger(this.getClass());
         dothanProxyRequirements = new ArrayList<>();
         version = 0;
-        Files.lines((new File(this.configFilePath)).toPath()).forEach(s -> {
-            s = s.trim();
+        try (var lines = Files.lines((new File(this.configFilePath)).toPath())) {
+            lines.forEach(s -> {
+                s = s.trim();
 
-            if (s.matches("^# Dothan Config Version \\d+$")) {
-                String str_version = s.trim().substring(24);
-                version = Integer.parseInt(str_version);
-                LoggerFactory.getLogger(this.getClass()).info("READ Version: " + version);
-            } else if (s.matches("^\\+ .+$")) {
-                String ip = s.trim().substring(2);
-                if (InetAddressValidator.getInstance().isValid(ip)) {
-                    whitelist.add(ip);
-                    LoggerFactory.getLogger(this.getClass()).info("READ WHITELIST: " + ip);
-                }
-            } else if (s.matches("^- .+$")) {
-                String ip = s.trim().substring(2);
-                if (InetAddressValidator.getInstance().isValid(ip)) {
-                    blacklist.add(ip);
-                    LoggerFactory.getLogger(this.getClass()).info("READ BLACKLIST: " + ip);
-                }
-            } else if (s.matches("^# MODE [A-Z]+$")) {
-                String str_mode = s.trim().substring(7);
-                transferMode = DothanTransferModeEnum.valueOf(str_mode);
-                LoggerFactory.getLogger(this.getClass()).info("READ TRANSFER MODE: " + transferMode);
-            } else if (s.matches("^# TRANSFER KEY .+$")) {
-                transferKey = s.trim().substring(15);
-                LoggerFactory.getLogger(this.getClass()).info("READ TRANSFER KEY: " + transferKey);
-            } else if (s.matches("^\\d+:.+:\\d+$")) {
-                // since 5.x
-                String[] parts = s.split(":");
-                dothanProxyRequirements.add(new DothanProxyRequirement(parts[1], Integer.parseInt(parts[2]), Integer.parseInt(parts[0])));
-                LoggerFactory.getLogger(this.getClass()).info("READ PROXY REQUIREMENT: " + parts[0] + " -> " + parts[1] + ":" + parts[2]);
-            } else if (s.matches("^\\d+\\s+[^:\\s]+:\\d+$")) {
-                // from 3.x to 4.x
-                String[] parts = s.split("(\\s+)|:");
-                String vl = parts[0];
-                String vh = parts[1];
-                String vp = parts[2];
+                if (s.matches("^# Dothan Config Version \\d+$")) {
+                    String str_version = s.trim().substring(24);
+                    version = Integer.parseInt(str_version);
+                    logger.info("READ Version: " + version);
+                } else if (s.matches("^\\+ .+$")) {
+                    String ip = s.trim().substring(2);
+                    if (InetAddressValidator.getInstance().isValid(ip)) {
+                        whitelist.add(ip);
+                        logger.info("READ WHITELIST: " + ip);
+                    }
+                } else if (s.matches("^- .+$")) {
+                    String ip = s.trim().substring(2);
+                    if (InetAddressValidator.getInstance().isValid(ip)) {
+                        blacklist.add(ip);
+                        logger.info("READ BLACKLIST: " + ip);
+                    }
+                } else if (s.matches("^# MODE [A-Z]+$")) {
+                    String str_mode = s.trim().substring(7);
+                    transferMode = DothanTransferModeEnum.valueOf(str_mode);
+                    logger.info("READ TRANSFER MODE: " + transferMode);
+                } else if (s.matches("^# TRANSFER KEY .+$")) {
+                    transferKey = s.trim().substring(15);
+                    logger.info("READ TRANSFER KEY: " + transferKey);
+                } else if (s.matches("^\\d+:.+:\\d+$")) {
+                    // since 5.x
+                    String[] parts = s.split(":");
+                    dothanProxyRequirements.add(new DothanProxyRequirement(parts[1], Integer.parseInt(parts[2]), Integer.parseInt(parts[0])));
+                    logger.info("READ PROXY REQUIREMENT: " + parts[0] + " -> " + parts[1] + ":" + parts[2]);
+                } else if (s.matches("^\\d+\\s+[^:\\s]+:\\d+$")) {
+                    // from 3.x to 4.x
+                    String[] parts = s.split("(\\s+)|:");
+                    String vl = parts[0];
+                    String vh = parts[1];
+                    String vp = parts[2];
 
-                dothanProxyRequirements.add(new DothanProxyRequirement(vh, Integer.parseInt(vp), Integer.parseInt(vl)));
-                LoggerFactory.getLogger(this.getClass()).info("READ PROXY REQUIREMENT: " + parts[0] + " -> " + parts[1] + ":" + parts[2]);
-            } else {
-                if (!s.isEmpty()) {
-                    LoggerFactory.getLogger(this.getClass()).warn("Cannot parse this line, ignore it: \n" + s);
+                    dothanProxyRequirements.add(new DothanProxyRequirement(vh, Integer.parseInt(vp), Integer.parseInt(vl)));
+                    logger.info("READ PROXY REQUIREMENT: " + parts[0] + " -> " + parts[1] + ":" + parts[2]);
+                } else {
+                    if (!s.isEmpty()) {
+                        logger.warn("Cannot parse this line, ignore it: \n" + s);
+                    }
                 }
-            }
-        });
+            });
+        }
     }
 
     public void loadFromCommandLineOptions(CommandLine options) {

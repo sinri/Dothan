@@ -1,6 +1,7 @@
 package Logging;
 
-import io.vertx.core.logging.LoggerFactory;
+
+import io.vertx.core.internal.logging.LoggerFactory;
 
 public class DefaultLoggerTest {
     public static void main(String[] args) {
@@ -13,6 +14,6 @@ public class DefaultLoggerTest {
         LoggerFactory.getLogger(DefaultLoggerTest.class).info("Some info " + note);
         LoggerFactory.getLogger(DefaultLoggerTest.class).warn("Some warn " + note);
         LoggerFactory.getLogger(DefaultLoggerTest.class).error("Some error " + note);
-        LoggerFactory.getLogger(DefaultLoggerTest.class).fatal("Some fatal " + note);
+//        LoggerFactory.getLogger(DefaultLoggerTest.class).fatal("Some fatal " + note);
     }
 }

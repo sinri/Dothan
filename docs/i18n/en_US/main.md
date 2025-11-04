@@ -16,7 +16,7 @@ Since Version 6, new package `io.github.sinri.Dothan` is adopted to the this pro
 <dependency>
   <groupId>io.github.sinri</groupId>
   <artifactId>Dothan</artifactId>
-  <version>6.0.1</version>
+  <version>7.0.0</version>
 </dependency>
 ```
 
@@ -24,13 +24,13 @@ Since Version 6, new package `io.github.sinri.Dothan` is adopted to the this pro
 
 You should export your `JAVA_HOME` first. In Mac OS X, you may run `/usr/libexec/java_home` to get correct path for it.
 
-Commonly snapshot is used for quick deploy with default version tag `6.0-SNAPSHOT` or so, run `mvn clean package deploy -P snapshot` to update. 
+Commonly snapshot is used for quick deploy with default version tag `7.0-SNAPSHOT` or so, run `mvn clean package deploy -P snapshot` to update. 
 
 To release new version to OSS-SONATYPE, run `mvn clean package deploy -P release` after correcting the version.
 
 ## Environment
 
-* Java 8
+* Java 17
 
 ## Maven Dependencies
 
@@ -63,6 +63,7 @@ usage: options
      -l <arg>   listen local port
      -p <arg>   database port
      -w <arg>   whitelist, separate IP with comma (as of 4.0)
+     -v         verbose
 
 ### Quick Proxy 
 
