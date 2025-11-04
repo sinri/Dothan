@@ -3,7 +3,7 @@ package io.github.sinri.Dothan.DothanProxy;
 import io.github.sinri.Dothan.Config.DothanConfig;
 import io.github.sinri.Dothan.Security.CryptAgentOfAES;
 import io.vertx.core.buffer.Buffer;
-import io.vertx.core.impl.logging.LoggerFactory;
+import io.vertx.core.internal.logging.LoggerFactory;
 import io.vertx.core.net.NetSocket;
 
 import java.nio.charset.StandardCharsets;

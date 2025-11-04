@@ -1,7 +1,7 @@
 package Logging;
 
 
-import io.vertx.core.impl.logging.LoggerFactory;
+import io.vertx.core.internal.logging.LoggerFactory;
 
 public class DefaultLoggerTest {
     public static void main(String[] args) {
