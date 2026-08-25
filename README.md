@@ -121,11 +121,9 @@ The file would be watched by the Dothan process and update config if the current
 
 Since version 3.1, Dothan uses WatchService for hot update function, and provide a parameter (-k) to disable hot update.
 
-## Translate Mode
+## Secure Transport
 
-We have to admit, the network is not so safe. That is why the service provider make databases not accessible from outside.
-However, we have certain time to access to such service, but we may be afraid that our connections would be seen by others through public network.
-So we might use the translate mode to pass our data encrypted, with two new parameters `MODE` and `TRANSFER KEY`, as of version 5.0.
+Dothan can protect both directions of the link between a local `ENCRYPT` node and a remote `DECRYPT` node. Application-facing and service-facing links remain plain TCP; only the Dothan-to-Dothan link is protected.
 
 ````
                   [CLIENT] 
@@ -134,7 +132,8 @@ So we might use the translate mode to pass our data encrypted, with two new para
                     ↓  |
       encrypt [DOTHAN   LOCAL] decrypt
                     |  ↑
-       SECRET BYTES |  | SECRET BYTES
+      AUTHENTICATED  |  | AUTHENTICATED
+       ENCRYPTION    |  | ENCRYPTION
                     ↓  |
       decrypt [DOTHAN  REMOTE] encrypt
                     |  ↑
@@ -143,27 +142,54 @@ So we might use the translate mode to pass our data encrypted, with two new para
              [SERVICE PROVIDER]
 ````
 
-On `DOTHAN LOCAL` the config file should contain transfer mode `ENCRYPT` and key.
+### RECORD transport (default)
+
+`RECORD` keeps the existing `MODE` and `TRANSFER KEY` configuration. It uses a versioned, length-prefixed record protocol with per-direction PBKDF2-HMAC-SHA256 key derivation, AES-256-GCM, fresh mutually bound peer headers, independent random salts and nonce prefixes, and strictly increasing sequence numbers.
+
+On `DOTHAN LOCAL`:
 
 ```
 # MODE ENCRYPT
-# TRANSFER KEY t8o7diugf8iauyvge8iu
+# TRANSFER KEY REPLACE_WITH_A_LONG_RANDOM_SECRET
 
 [DOTHAN_LOCAL_PORT]:[DOTHAN_REMOTE_ADDRESS]:[DOTHAN_REMOTE_PORT]
 
 ```
 
-While on `DOTHAN REMOTE` the config file should contain transfer mode `DECRYPT` and key.
+On `DOTHAN REMOTE`, use the same secret:
 
 ```
 # MODE DECRYPT
-# TRANSFER KEY t8o7diugf8iauyvge8iu
+# TRANSFER KEY REPLACE_WITH_A_LONG_RANDOM_SECRET
 
 [DOTHAN_REMOTE_PORT]:[SERVER_ADDRESS]:[SERVER_PORT]
 
 ```
 
-So your request sent to the `DOTHAN_LOCAL_PORT` of `DOTHAN LOCAL` would be transferred to `DOTHAN REMOTE` and finally reach the actual service provider. 
+`# SECURE TRANSPORT RECORD` may be specified explicitly, but `RECORD` is the default. Use a high-entropy secret rather than a human password.
+
+The version 2 handshake starts with a 58-byte header in each direction: `DTHN` magic, version, sender role, 16-byte salt, 4-byte nonce prefix, and a 32-byte HMAC. Each traffic key is bound to the other peer's fresh authenticated header. No application bytes are accepted until that exchange completes, and the handshake times out after 10 seconds. Each following frame contains a 32-bit length, a 64-bit sequence number, and up to 16 KiB of ciphertext plus its GCM tag. The nonce is the direction's prefix followed by its sequence number; missing, repeated, reordered, oversized, or unauthenticated records are rejected. A zero-length authenticated record closes the stream, so truncation at a frame boundary is also detected.
+
+### TLS transport
+
+For standard TLS, configure both nodes with identities signed by a private CA. Each PKCS#12 keystore contains that node's private key and certificate chain; each truststore trusts the CA used to sign the other node. The remote certificate must contain a DNS or IP subject alternative name matching the address used by the `ENCRYPT` node.
+
+```text
+# MODE ENCRYPT
+# SECURE TRANSPORT TLS
+# TLS KEYSTORE PATH /secure/dothan-local.p12
+# TLS KEYSTORE PASSWORD REPLACE_ME
+# TLS TRUSTSTORE PATH /secure/dothan-ca.p12
+# TLS TRUSTSTORE PASSWORD REPLACE_ME
+
+[DOTHAN_LOCAL_PORT]:[DOTHAN_REMOTE_ADDRESS]:[DOTHAN_REMOTE_PORT]
+```
+
+The remote node uses the same directives with `# MODE DECRYPT` and its own identity keystore. Dothan permits TLS 1.3 only, verifies the remote hostname, validates certificates in both directions, and requires a client certificate. `TRANSFER KEY` is not used by TLS transport.
+
+### Upgrade compatibility
+
+The secure record wire format replaces the legacy AES/ECB stream. Existing configuration remains valid because `RECORD` is the default, but old and new encrypted nodes cannot communicate. Upgrade both ends of every encrypted link together. `PLAIN` mode is unchanged. Authentication, framing, or decryption errors close both sides of the proxied connection.
 
 If you like, you can use more than one Dothan pair to make the connection chain.
 

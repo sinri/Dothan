@@ -114,9 +114,9 @@ java -jar Dothan.jar -d -c /path/to/Dothan.config
 
 在中转机的监听端口不重复的条件下，可以定义许多规则。
 
-#### 加密传输（可选）
+#### 安全传输（可选）
 
-加密传输的模型：
+本地 `ENCRYPT` 节点和远端 `DECRYPT` 节点之间的请求与响应都会受到保护。面向客户端及真实服务的两段仍为普通 TCP，只有两个 Dothan 节点之间使用安全传输。
 
 ````
                   [CLIENT] 
@@ -125,7 +125,7 @@ java -jar Dothan.jar -d -c /path/to/Dothan.config
                     ↓  |
       encrypt [DOTHAN   LOCAL] decrypt
                     |  ↑
-       SECRET BYTES |  | SECRET BYTES
+       认证加密数据 |  | 认证加密数据
                     ↓  |
       decrypt [DOTHAN  REMOTE] encrypt
                     |  ↑
@@ -134,30 +134,57 @@ java -jar Dothan.jar -d -c /path/to/Dothan.config
              [SERVICE PROVIDER]
 ````
 
-加密传输需要在中转机(靠近数据库的一端)和接收机（靠近客户端的一端）上都启用Dothan，分别利用`ENCRYPT`和`DECRYPT`两种不同的`MODE`，并配置好相同的`TRANSFER KEY`。
+##### RECORD 传输（默认）
 
-中转机 `DOTHAN REMOTE` 上的Dothan使用`DECRYPT`模式。
+`RECORD` 保持原有 `MODE` 和 `TRANSFER KEY` 配置格式。它采用带版本及长度字段的记录协议，为两个方向分别通过 PBKDF2-HMAC-SHA256 派生密钥，使用 AES-256-GCM、相互绑定的新鲜对端握手头、独立随机盐和 nonce 前缀，并严格检查递增序列号。
+
+中转机 `DOTHAN REMOTE` 使用 `DECRYPT` 模式：
 
 ```
 # MODE DECRYPT
-# TRANSFER KEY XXX
+# TRANSFER KEY 请替换为足够长的随机密钥
 
 [DOTHAN_REMOTE_PORT]:[SERVER_ADDRESS]:[SERVER_PORT]
 
 ```
 
 
-接收机 `DOTHAN LOCAL` 上的Dothan使用`ENCRYPT`模式。
+接收机 `DOTHAN LOCAL` 使用 `ENCRYPT` 模式，并配置相同密钥：
 
 ```
 # MODE ENCRYPT
-# TRANSFER KEY XXX
+# TRANSFER KEY 请替换为足够长的随机密钥
 
 [DOTHAN_LOCAL_PORT]:[DOTHAN_REMOTE_ADDRESS]:[DOTHAN_REMOTE_PORT]
 
 ```
 
-理论上，中间可以中转无数次完成数据接力；不过应该没有这么可怕的应用场景的吧。
+可以显式添加 `# SECURE TRANSPORT RECORD`，省略时也默认使用 `RECORD`。请使用高熵随机密钥，不要使用容易猜测的口令。
+
+版本 2 握手在每个方向发送一个 58 字节头：`DTHN` 魔数、版本、发送方角色、16 字节盐、4 字节 nonce 前缀和 32 字节 HMAC。每个方向的流量密钥都会绑定对端新生成且已认证的握手头；交换完成前不会接收应用数据，握手超时为 10 秒。后续每帧包含 32 位长度、64 位序列号，以及最多 16 KiB 密文和 GCM 标签。nonce 由本方向前缀与序列号组成；缺失、重复、乱序、过大或认证失败的记录都会被拒绝。零长度认证记录用于关闭流，因此帧边界处的截断也能被检测。
+
+##### TLS 传输
+
+TLS 模式要求两个节点使用私有 CA 签发的身份。每个 PKCS#12 密钥库包含本节点的私钥和证书链，信任库则信任签发对端证书的 CA。远端证书的 DNS 或 IP SAN 必须匹配 `ENCRYPT` 节点配置的连接地址。
+
+```text
+# MODE ENCRYPT
+# SECURE TRANSPORT TLS
+# TLS KEYSTORE PATH /secure/dothan-local.p12
+# TLS KEYSTORE PASSWORD 请替换
+# TLS TRUSTSTORE PATH /secure/dothan-ca.p12
+# TLS TRUSTSTORE PASSWORD 请替换
+
+[DOTHAN_LOCAL_PORT]:[DOTHAN_REMOTE_ADDRESS]:[DOTHAN_REMOTE_PORT]
+```
+
+远端节点使用相同指令，将模式改为 `# MODE DECRYPT` 并使用自己的身份密钥库。Dothan 仅启用 TLS 1.3，校验远端主机名和双方证书，并强制要求客户端证书。TLS 模式不使用 `TRANSFER KEY`。
+
+##### 升级兼容性
+
+新的安全记录格式取代了旧版 AES/ECB 数据流。由于 `RECORD` 是默认值，已有配置文件可以继续使用，但新旧版本的加密节点不能互通，必须同时升级一条加密链路的两端。`PLAIN` 模式不受影响。认证、分帧或解密失败时，Dothan 会关闭代理连接的两端。
+
+理论上，中间可以使用多组 Dothan 完成数据接力。
 
 #### 注释
 

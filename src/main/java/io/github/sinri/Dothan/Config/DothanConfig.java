@@ -1,6 +1,7 @@
 package io.github.sinri.Dothan.Config;
 
 import io.github.sinri.Dothan.DothanProxy.DothanProxyRequirement;
+import io.github.sinri.Dothan.DothanProxy.SecureTransportModeEnum;
 import io.github.sinri.Dothan.DothanProxy.DothanTransferModeEnum;
 import io.vertx.core.internal.logging.LoggerFactory;
 import org.apache.commons.cli.CommandLine;
@@ -20,16 +21,16 @@ public class DothanConfig {
     private HashSet<String> whitelist;
     private HashSet<String> blacklist;
     private DothanTransferModeEnum transferMode;
+    private SecureTransportModeEnum secureTransportMode;
     private String transferKey;
+    private String tlsKeyStorePath;
+    private String tlsKeyStorePassword;
+    private String tlsTrustStorePath;
+    private String tlsTrustStorePassword;
     private boolean verbose;// detail log mode
 
     private DothanConfig() {
-        dothanProxyRequirements = new ArrayList<>();
-        whitelist = new HashSet<>();
-        blacklist = new HashSet<>();
-        transferMode = DothanTransferModeEnum.PLAIN;
-        transferKey = "";
-        version = 0;
+        resetConfiguration();
     }
 
     public static DothanConfig getInstance() {
@@ -77,10 +78,29 @@ public class DothanConfig {
         return transferKey;
     }
 
+    public SecureTransportModeEnum getSecureTransportMode() {
+        return secureTransportMode;
+    }
+
+    public String getTlsKeyStorePath() {
+        return tlsKeyStorePath;
+    }
+
+    public String getTlsKeyStorePassword() {
+        return tlsKeyStorePassword;
+    }
+
+    public String getTlsTrustStorePath() {
+        return tlsTrustStorePath;
+    }
+
+    public String getTlsTrustStorePassword() {
+        return tlsTrustStorePassword;
+    }
+
     public void loadFromConfigFile() throws IOException {
         var logger=LoggerFactory.getLogger(this.getClass());
-        dothanProxyRequirements = new ArrayList<>();
-        version = 0;
+        resetConfiguration();
         try (var lines = Files.lines((new File(this.configFilePath)).toPath())) {
             lines.forEach(s -> {
                 s = s.trim();
@@ -107,7 +127,22 @@ public class DothanConfig {
                     logger.info("READ TRANSFER MODE: " + transferMode);
                 } else if (s.matches("^# TRANSFER KEY .+$")) {
                     transferKey = s.trim().substring(15);
-                    logger.info("READ TRANSFER KEY: " + transferKey);
+                    logger.info("READ TRANSFER KEY: [REDACTED]");
+                } else if (s.matches("^# SECURE TRANSPORT (RECORD|TLS)$")) {
+                    secureTransportMode = SecureTransportModeEnum.valueOf(s.trim().substring(19));
+                    logger.info("READ SECURE TRANSPORT: " + secureTransportMode);
+                } else if (s.matches("^# TLS KEYSTORE PATH .+$")) {
+                    tlsKeyStorePath = s.trim().substring(20);
+                    logger.info("READ TLS KEYSTORE PATH: " + tlsKeyStorePath);
+                } else if (s.matches("^# TLS KEYSTORE PASSWORD .+$")) {
+                    tlsKeyStorePassword = s.trim().substring(24);
+                    logger.info("READ TLS KEYSTORE PASSWORD: [REDACTED]");
+                } else if (s.matches("^# TLS TRUSTSTORE PATH .+$")) {
+                    tlsTrustStorePath = s.trim().substring(22);
+                    logger.info("READ TLS TRUSTSTORE PATH: " + tlsTrustStorePath);
+                } else if (s.matches("^# TLS TRUSTSTORE PASSWORD .+$")) {
+                    tlsTrustStorePassword = s.trim().substring(26);
+                    logger.info("READ TLS TRUSTSTORE PASSWORD: [REDACTED]");
                 } else if (s.matches("^\\d+:.+:\\d+$")) {
                     // since 5.x
                     String[] parts = s.split(":");
@@ -129,15 +164,11 @@ public class DothanConfig {
                 }
             });
         }
+        validateSecureTransportConfiguration();
     }
 
     public void loadFromCommandLineOptions(CommandLine options) {
-        dothanProxyRequirements = new ArrayList<>();
-        whitelist = new HashSet<>();
-        blacklist = new HashSet<>();
-        transferMode = DothanTransferModeEnum.PLAIN;
-        transferKey = "";
-        version = 0;
+        resetConfiguration();
 
         String vh = "127.0.0.1";
         String vp = "3306";
@@ -165,5 +196,35 @@ public class DothanConfig {
         }
 
         version = -1;
+    }
+
+    private void resetConfiguration() {
+        dothanProxyRequirements = new ArrayList<>();
+        whitelist = new HashSet<>();
+        blacklist = new HashSet<>();
+        transferMode = DothanTransferModeEnum.PLAIN;
+        secureTransportMode = SecureTransportModeEnum.RECORD;
+        transferKey = "";
+        tlsKeyStorePath = "";
+        tlsKeyStorePassword = "";
+        tlsTrustStorePath = "";
+        tlsTrustStorePassword = "";
+        version = 0;
+    }
+
+    private void validateSecureTransportConfiguration() throws IOException {
+        if (transferMode == DothanTransferModeEnum.PLAIN) {
+            return;
+        }
+        if (secureTransportMode == SecureTransportModeEnum.RECORD) {
+            if (transferKey.isBlank()) {
+                throw new IOException("TRANSFER KEY is required for RECORD secure transport");
+            }
+            return;
+        }
+        if (tlsKeyStorePath.isBlank() || tlsKeyStorePassword.isBlank()
+                || tlsTrustStorePath.isBlank() || tlsTrustStorePassword.isBlank()) {
+            throw new IOException("TLS secure transport requires keystore and truststore paths and passwords");
+        }
     }
 }

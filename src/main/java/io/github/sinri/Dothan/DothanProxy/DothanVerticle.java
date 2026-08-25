@@ -5,7 +5,9 @@ import io.vertx.core.AbstractVerticle;
 import io.vertx.core.internal.logging.Logger;
 import io.vertx.core.internal.logging.LoggerFactory;
 import io.vertx.core.net.NetClient;
+import io.vertx.core.net.NetClientOptions;
 import io.vertx.core.net.NetServer;
+import io.vertx.core.net.NetServerOptions;
 
 public class DothanVerticle extends AbstractVerticle {
 
@@ -31,8 +33,18 @@ public class DothanVerticle extends AbstractVerticle {
 
     public void start() {
         Logger logger = LoggerFactory.getLogger(this.getClass());
-        NetServer netServer = vertx.createNetServer();//创建代理服务器
-        NetClient netClient = vertx.createNetClient();//创建连接mysql客户端
+        DothanConfig config = DothanConfig.getInstance();
+        NetServerOptions serverOptions = new NetServerOptions();
+        NetClientOptions clientOptions = new NetClientOptions();
+        if (config.getSecureTransportMode() == SecureTransportModeEnum.TLS) {
+            if (config.getTransferMode() == DothanTransferModeEnum.DECRYPT) {
+                serverOptions = TlsTransportOptions.server(config);
+            } else if (config.getTransferMode() == DothanTransferModeEnum.ENCRYPT) {
+                clientOptions = TlsTransportOptions.client(config);
+            }
+        }
+        NetServer netServer = vertx.createNetServer(serverOptions);//创建代理服务器
+        NetClient netClient = vertx.createNetClient(clientOptions);//创建连接mysql客户端
         netServer.connectHandler(socket -> {
                      logger.info("Dothan Verticle Connect Handler set up for %s which come to %s".formatted(socket.remoteAddress(), socket.localAddress()));
                      netClient.connect(serverPort, serverHost)
@@ -58,7 +70,7 @@ public class DothanVerticle extends AbstractVerticle {
                                       }
 
                                       //与目标mysql服务器成功连接连接之后，创造一个MysqlProxyConnection对象,并执行代理方法
-                                      new DothanConnection(socket, result.result()).proxy();
+                                      new DothanConnection(vertx, socket, result.result()).proxy();
                                       logger.info("PROXY [%s] successfully connected to SERVICE PROVIDER [%s]".formatted(result.result()
                                                                                                                                .localAddress(), result.result()
                                                                                                                                                       .remoteAddress()));
