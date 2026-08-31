@@ -115,11 +115,14 @@ This relies on the version declaration in configuration file as a line:
 
     # Dothan Config Version VERSION_CODE
 
-The version code should be an *positive* integer. 
-If there are more than one line in this format, the last would be used. 
-The file would be watched by the Dothan process and update config if the current version code became greater.
+The version code must be a non-negative integer, and the file must contain at most one version declaration.
+The file is watched by the Dothan process, but a candidate is published only when its version is strictly greater than the active version.
 
 Since version 3.1, Dothan uses WatchService for hot update function, and provide a parameter (-k) to disable hot update.
+
+As of version 7.1, hot updates use immutable configuration snapshots. Dothan reads and validates the entire candidate in isolation, including routes, ports, addresses, modes, and required security settings. Invalid, partial, stale, or undeployable candidates are rejected without changing the active snapshot. Removing optional whitelist, blacklist, mode, key, or TLS declarations resets them to their documented defaults instead of retaining values from an older version.
+
+New listening ports are opened before publication. Existing ports stay open, and every accepted connection captures exactly one snapshot, so established connections continue with their original route and security settings while new connections use the newly published version. Removed ports stop accepting new connections and close after their existing connections drain. Listener deployment or shutdown failures are reported through the asynchronous lifecycle rather than mutable polling state.
 
 ## Secure Transport
 

@@ -1,10 +1,10 @@
 package io.github.sinri.Dothan.DothanProxy;
 
-import io.github.sinri.Dothan.Config.DothanConfig;
+import io.github.sinri.Dothan.Config.DothanConfigSnapshot;
 import io.vertx.core.http.ClientAuth;
 import io.vertx.core.net.NetClientOptions;
-import io.vertx.core.net.NetServerOptions;
 import io.vertx.core.net.PfxOptions;
+import io.vertx.core.net.ServerSSLOptions;
 
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
@@ -15,7 +15,7 @@ final class TlsTransportOptions {
     private TlsTransportOptions() {
     }
 
-    static NetClientOptions client(DothanConfig config) {
+    static NetClientOptions client(DothanConfigSnapshot config) {
         return new NetClientOptions()
                 .setSsl(true)
                 .setKeyCertOptions(identity(config))
@@ -27,9 +27,8 @@ final class TlsTransportOptions {
                 .setSslHandshakeTimeoutUnit(TimeUnit.SECONDS);
     }
 
-    static NetServerOptions server(DothanConfig config) {
-        return new NetServerOptions()
-                .setSsl(true)
+    static ServerSSLOptions server(DothanConfigSnapshot config) {
+        return new ServerSSLOptions()
                 .setKeyCertOptions(identity(config))
                 .setTrustOptions(trust(config))
                 .setClientAuth(ClientAuth.REQUIRED)
@@ -38,13 +37,13 @@ final class TlsTransportOptions {
                 .setSslHandshakeTimeoutUnit(TimeUnit.SECONDS);
     }
 
-    private static PfxOptions identity(DothanConfig config) {
+    private static PfxOptions identity(DothanConfigSnapshot config) {
         return new PfxOptions()
                 .setPath(config.getTlsKeyStorePath())
                 .setPassword(config.getTlsKeyStorePassword());
     }
 
-    private static PfxOptions trust(DothanConfig config) {
+    private static PfxOptions trust(DothanConfigSnapshot config) {
         return new PfxOptions()
                 .setPath(config.getTlsTrustStorePath())
                 .setPassword(config.getTlsTrustStorePassword());

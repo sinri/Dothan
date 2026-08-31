@@ -1,18 +1,22 @@
 package io.github.sinri.Dothan.DothanProxy;
 
-import io.github.sinri.Dothan.Config.DothanConfig;
+import io.github.sinri.Dothan.Config.DothanConfigParser;
+import io.github.sinri.Dothan.Config.DothanConfigManager;
+import io.github.sinri.Dothan.Config.DothanConfigSnapshot;
 import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.net.NetClientOptions;
 import io.vertx.core.net.NetClient;
 import io.vertx.core.net.NetServer;
 import io.vertx.core.net.NetServerOptions;
+import io.vertx.core.net.ServerSSLOptions;
 import io.vertx.core.net.NetSocket;
 import io.vertx.core.net.PfxOptions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import java.io.ByteArrayOutputStream;
+import java.net.ServerSocket;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Random;
@@ -33,8 +37,14 @@ class TlsTransportIntegrationTest {
     @Test
     void tls13MutualAuthenticationProtectsBidirectionalLargePayloads() throws Exception {
         TestKeyStores stores = TestKeyStores.create(temporaryDirectory);
-        NetServerOptions serverOptions = TlsTransportOptions.server(loadTlsConfig(
+        ServerSSLOptions serverSslOptions = TlsTransportOptions.server(loadTlsConfig(
                 DothanTransferModeEnum.DECRYPT, stores.serverIdentity(), stores.trustStore()));
+        NetServerOptions serverOptions = new NetServerOptions()
+                .setSsl(true)
+                .setKeyCertOptions(serverSslOptions.getKeyCertOptions())
+                .setTrustOptions(serverSslOptions.getTrustOptions())
+                .setClientAuth(serverSslOptions.getClientAuth())
+                .setEnabledSecureTransportProtocols(serverSslOptions.getEnabledSecureTransportProtocols());
         NetClientOptions clientOptions = TlsTransportOptions.client(loadTlsConfig(
                 DothanTransferModeEnum.ENCRYPT, stores.clientIdentity(), stores.trustStore()));
 
@@ -107,7 +117,75 @@ class TlsTransportIntegrationTest {
         }
     }
 
-    private DothanConfig loadTlsConfig(DothanTransferModeEnum role, Path identity, Path trust) throws Exception {
+    @Test
+    void tlsSnapshotsWorkThroughStableRuntimeListeners() throws Exception {
+        TestKeyStores stores = TestKeyStores.create(temporaryDirectory);
+        Vertx vertx = Vertx.vertx();
+        NetServer echoServer = null;
+        DothanRuntime decryptRuntime = null;
+        DothanRuntime encryptRuntime = null;
+        NetClient client = null;
+        NetSocket socket = null;
+        try {
+            echoServer = vertx.createNetServer()
+                    .connectHandler(peer -> peer.handler(peer::write))
+                    .listen(0, "127.0.0.1")
+                    .await(10, TimeUnit.SECONDS);
+            int decryptPort = availablePort();
+            int encryptPort = availablePort();
+            DothanConfigSnapshot decryptSnapshot = loadTlsConfig(
+                    DothanTransferModeEnum.DECRYPT, stores.serverIdentity(), stores.trustStore(),
+                    decryptPort, "127.0.0.1", echoServer.actualPort());
+            DothanConfigSnapshot encryptSnapshot = loadTlsConfig(
+                    DothanTransferModeEnum.ENCRYPT, stores.clientIdentity(), stores.trustStore(),
+                    encryptPort, "localhost", decryptPort);
+
+            decryptRuntime = new DothanRuntime(vertx, new DothanConfigManager());
+            encryptRuntime = new DothanRuntime(vertx, new DothanConfigManager());
+            decryptRuntime.start(decryptSnapshot).await(10, TimeUnit.SECONDS);
+            encryptRuntime.start(encryptSnapshot).await(10, TimeUnit.SECONDS);
+
+            client = vertx.createNetClient();
+            socket = client.connect(encryptPort, "127.0.0.1").await(10, TimeUnit.SECONDS);
+            byte[] payload = new byte[128_003];
+            new Random(84).nextBytes(payload);
+            ByteArrayOutputStream echoed = new ByteArrayOutputStream();
+            CountDownLatch complete = new CountDownLatch(1);
+            socket.handler(buffer -> {
+                echoed.writeBytes(buffer.getBytes());
+                if (echoed.size() == payload.length) {
+                    complete.countDown();
+                }
+            });
+            socket.write(Buffer.buffer(payload)).await(10, TimeUnit.SECONDS);
+            assertTrue(complete.await(10, TimeUnit.SECONDS));
+            assertArrayEquals(payload, echoed.toByteArray());
+        } finally {
+            if (socket != null) {
+                socket.close().await(10, TimeUnit.SECONDS);
+            }
+            if (encryptRuntime != null) {
+                encryptRuntime.close().await(10, TimeUnit.SECONDS);
+            }
+            if (decryptRuntime != null) {
+                decryptRuntime.close().await(10, TimeUnit.SECONDS);
+            }
+            if (client != null) {
+                client.close().await(10, TimeUnit.SECONDS);
+            }
+            if (echoServer != null) {
+                echoServer.close().await(10, TimeUnit.SECONDS);
+            }
+            vertx.close().await(10, TimeUnit.SECONDS);
+        }
+    }
+
+    private DothanConfigSnapshot loadTlsConfig(DothanTransferModeEnum role, Path identity, Path trust) throws Exception {
+        return loadTlsConfig(role, identity, trust, 20001, "localhost", 20002);
+    }
+
+    private DothanConfigSnapshot loadTlsConfig(DothanTransferModeEnum role, Path identity, Path trust,
+                                               int listenPort, String targetHost, int targetPort) throws Exception {
         Path path = temporaryDirectory.resolve(role.name().toLowerCase() + ".config");
         Files.writeString(path, """
                 # MODE %s
@@ -116,12 +194,16 @@ class TlsTransportIntegrationTest {
                 # TLS KEYSTORE PASSWORD %s
                 # TLS TRUSTSTORE PATH %s
                 # TLS TRUSTSTORE PASSWORD %s
-                20001:localhost:20002
-                """.formatted(role, identity, PASSWORD, trust, PASSWORD));
-        DothanConfig config = DothanConfig.getInstance();
-        config.setConfigFilePath(path.toString());
-        config.loadFromConfigFile();
-        return config;
+                %d:%s:%d
+                """.formatted(role, identity, PASSWORD, trust, PASSWORD,
+                listenPort, targetHost, targetPort));
+        return DothanConfigParser.parse(path, false);
+    }
+
+    private int availablePort() throws Exception {
+        try (ServerSocket serverSocket = new ServerSocket(0)) {
+            return serverSocket.getLocalPort();
+        }
     }
 
     private record TestKeyStores(Path serverIdentity, Path clientIdentity, Path trustStore) {

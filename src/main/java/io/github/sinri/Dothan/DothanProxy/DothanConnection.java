@@ -1,6 +1,6 @@
 package io.github.sinri.Dothan.DothanProxy;
 
-import io.github.sinri.Dothan.Config.DothanConfig;
+import io.github.sinri.Dothan.Config.DothanConfigSnapshot;
 import io.github.sinri.Dothan.Security.SecureRecordCodec;
 import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
@@ -14,14 +14,19 @@ public class DothanConnection {
     private final NetSocket clientSocket;
     private final NetSocket serverSocket;
     private final Vertx vertx;
+    private final DothanConfigSnapshot config;
+    private final Runnable closeCallback;
     private final Logger logger = LoggerFactory.getLogger(getClass());
     private boolean closed;
     private long handshakeTimerId = -1;
 
-    DothanConnection(Vertx vertx, NetSocket clientSocket, NetSocket serverSocket) {
+    DothanConnection(Vertx vertx, NetSocket clientSocket, NetSocket serverSocket,
+                     DothanConfigSnapshot config, Runnable closeCallback) {
         this.vertx = vertx;
         this.clientSocket = clientSocket;
         this.serverSocket = serverSocket;
+        this.config = config;
+        this.closeCallback = closeCallback;
     }
 
     void proxy() {
@@ -30,7 +35,6 @@ public class DothanConnection {
         serverSocket.exceptionHandler(error -> fail("service-provider socket failure", error));
         clientSocket.exceptionHandler(error -> fail("client socket failure", error));
 
-        DothanConfig config = DothanConfig.getInstance();
         DothanTransferModeEnum role = config.getTransferMode();
         if (role == DothanTransferModeEnum.PLAIN || config.getSecureTransportMode() == SecureTransportModeEnum.TLS) {
             proxyTransparent();
@@ -47,6 +51,8 @@ public class DothanConnection {
     private void proxyTransparent() {
         clientSocket.handler(buffer -> forward(clientSocket, serverSocket, buffer, "request"));
         serverSocket.handler(buffer -> forward(serverSocket, clientSocket, buffer, "response"));
+        clientSocket.resume();
+        serverSocket.resume();
     }
 
     private void proxySecureRecords(DothanTransferModeEnum role, String transferKey)
@@ -70,6 +76,7 @@ public class DothanConnection {
             clientSocket.handler(buffer -> encodeAndForward(clientSocket, encoder, serverSocket, buffer, "request"));
             serverSocket.handler(buffer -> decodeAndForward(serverSocket, decoder, encoder,
                     clientSocket, clientSocket, buffer, "response"));
+            serverSocket.resume();
         } else {
             serverSocket.pause();
             serverSocket.closeHandler(ignored -> plaintextInputClosed(encoder, clientSocket));
@@ -79,6 +86,7 @@ public class DothanConnection {
                     serverSocket, serverSocket, buffer, "request"));
             serverSocket.handler(buffer -> encodeAndForward(serverSocket, encoder, clientSocket,
                     buffer, "response"));
+            clientSocket.resume();
         }
     }
 
@@ -165,7 +173,7 @@ public class DothanConnection {
     }
 
     private void logTransfer(String direction, int plaintextLength) {
-        if (DothanConfig.getInstance().isVerbose()) {
+        if (config.isVerbose()) {
             logger.info("Forwarded %s plaintext bytes in %s direction".formatted(plaintextLength, direction));
         }
     }
@@ -183,6 +191,7 @@ public class DothanConnection {
         cancelHandshakeTimer();
         clientSocket.close();
         serverSocket.close();
+        closeCallback.run();
     }
 
     private void cancelHandshakeTimer() {
