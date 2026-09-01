@@ -12,8 +12,9 @@ import io.vertx.core.net.NetClientOptions;
 import io.vertx.core.net.NetServer;
 import io.vertx.core.net.NetSocket;
 
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * A stable listening port that routes each newly accepted connection using one snapshot.
@@ -23,10 +24,13 @@ final class DothanListener implements DothanRuntime.ManagedListener {
     private final DothanConfigManager configManager;
     private final int listenPort;
     private final Logger logger = LoggerFactory.getLogger(getClass());
-    private final AtomicInteger activeConnections = new AtomicInteger();
+    private final Set<ConnectionContext> connections = ConcurrentHashMap.newKeySet();
     private final AtomicBoolean retired = new AtomicBoolean();
-    private final AtomicBoolean closing = new AtomicBoolean();
+    private final AtomicBoolean forceClosing = new AtomicBoolean();
+    private final AtomicBoolean serverClosing = new AtomicBoolean();
     private final Promise<Void> retirement = Promise.promise();
+    private volatile boolean serverClosed;
+    private Throwable closeFailure;
     private NetServer server;
 
     DothanListener(Vertx vertx, DothanConfigManager configManager, int listenPort) {
@@ -72,70 +76,75 @@ final class DothanListener implements DothanRuntime.ManagedListener {
             return;
         }
 
-        activeConnections.incrementAndGet();
-        if (retired.get()) {
-            clientSocket.close();
-            connectionFinished(null);
-            return;
-        }
-        NetClient netClient = null;
+        ConnectionContext connection = null;
         try {
             NetClientOptions clientOptions = new NetClientOptions();
             if (snapshot.getSecureTransportMode() == SecureTransportModeEnum.TLS
                     && snapshot.getTransferMode() == DothanTransferModeEnum.ENCRYPT) {
                 clientOptions = TlsTransportOptions.client(snapshot);
             }
-            netClient = vertx.createNetClient(clientOptions);
-            NetClient connectionClient = netClient;
+            NetClient netClient = vertx.createNetClient(clientOptions);
+            connection = new ConnectionContext(clientSocket, netClient);
+            connections.add(connection);
+            if (retired.get()) {
+                connection.closePending();
+                return;
+            }
+            ConnectionContext acceptedConnection = connection;
             Future<Void> incomingReady = snapshot.getSecureTransportMode() == SecureTransportModeEnum.TLS
                     && snapshot.getTransferMode() == DothanTransferModeEnum.DECRYPT
                     ? clientSocket.upgradeToSsl(TlsTransportOptions.server(snapshot))
                     : Future.succeededFuture();
             incomingReady
-                    .compose(ignored -> connectionClient.connect(requirement.serverPort, requirement.serverHost))
+                    .compose(ignored -> netClient.connect(requirement.serverPort, requirement.serverHost))
                     .onSuccess(serverSocket -> establishConnection(
-                            clientSocket, serverSocket, connectionClient, snapshot))
-                    .onFailure(error -> setupFailed(clientSocket, connectionClient, snapshot, error));
+                            acceptedConnection, serverSocket, snapshot))
+                    .onFailure(error -> setupFailed(acceptedConnection, snapshot, error));
         } catch (RuntimeException error) {
-            setupFailed(clientSocket, netClient, snapshot, error);
+            if (connection == null) {
+                logger.error("Connection setup failed on listener %d for config version %d: %s"
+                        .formatted(listenPort, snapshot.getVersion(), error.getMessage()), error);
+                clientSocket.close();
+            } else {
+                setupFailed(connection, snapshot, error);
+            }
         }
     }
 
-    private void establishConnection(NetSocket clientSocket, NetSocket serverSocket, NetClient netClient,
+    private void establishConnection(ConnectionContext connection, NetSocket serverSocket,
                                      DothanConfigSnapshot snapshot) {
+        if (connection.finished.get() || forceClosing.get()) {
+            serverSocket.close();
+            connection.closePending();
+            return;
+        }
         try {
             logger.info("PROXY [%s] connected to SERVICE PROVIDER [%s] using config version %d"
                     .formatted(serverSocket.localAddress(), serverSocket.remoteAddress(), snapshot.getVersion()));
-            new DothanConnection(vertx, clientSocket, serverSocket, snapshot,
-                    () -> connectionFinished(netClient)).proxy();
+            DothanConnection proxy = new DothanConnection(vertx, connection.clientSocket, serverSocket, snapshot,
+                    connection::finishedProxy);
+            connection.proxy = proxy;
+            if (connection.finished.get() || forceClosing.get()) {
+                proxy.close();
+                return;
+            }
+            proxy.proxy();
         } catch (RuntimeException error) {
             serverSocket.close();
-            setupFailed(clientSocket, netClient, snapshot, error);
+            setupFailed(connection, snapshot, error);
         }
     }
 
-    private void setupFailed(NetSocket clientSocket, NetClient netClient,
-                             DothanConfigSnapshot snapshot, Throwable error) {
+    private void setupFailed(ConnectionContext connection, DothanConfigSnapshot snapshot, Throwable error) {
         logger.error("Connection setup failed on listener %d for config version %d: %s"
                 .formatted(listenPort, snapshot.getVersion(), error.getMessage()), error);
-        clientSocket.close();
-        connectionFinished(netClient);
-    }
-
-    private void connectionFinished(NetClient netClient) {
-        if (netClient != null) {
-            netClient.close();
-        }
-        int remaining = activeConnections.decrementAndGet();
-        if (retired.get() && remaining == 0) {
-            closeServer();
-        }
+        connection.closePending();
     }
 
     @Override
     public Future<Void> retire() {
         retired.set(true);
-        if (activeConnections.get() == 0) {
+        if (connections.isEmpty()) {
             closeServer();
         }
         return retirement.future();
@@ -144,18 +153,97 @@ final class DothanListener implements DothanRuntime.ManagedListener {
     @Override
     public Future<Void> closeNow() {
         retired.set(true);
+        forceClosing.set(true);
         closeServer();
+        connections.forEach(ConnectionContext::closeNow);
         return retirement.future();
     }
 
     private void closeServer() {
-        if (!closing.compareAndSet(false, true)) {
+        if (!serverClosing.compareAndSet(false, true)) {
             return;
         }
         if (server == null) {
-            retirement.tryComplete();
+            serverClosed = true;
+            tryCompleteRetirement();
             return;
         }
-        server.close().onComplete(retirement);
+        server.close().onComplete(result -> {
+            if (result.failed()) {
+                recordCloseFailure(result.cause());
+            }
+            serverClosed = true;
+            tryCompleteRetirement();
+        });
+    }
+
+    private synchronized void recordCloseFailure(Throwable error) {
+        if (error == null) {
+            return;
+        }
+        if (closeFailure == null) {
+            closeFailure = error;
+        } else if (closeFailure != error) {
+            closeFailure.addSuppressed(error);
+        }
+    }
+
+    private synchronized void tryCompleteRetirement() {
+        if (!serverClosed || !connections.isEmpty()) {
+            return;
+        }
+        if (closeFailure == null) {
+            retirement.tryComplete();
+        } else {
+            retirement.tryFail(closeFailure);
+        }
+    }
+
+    private final class ConnectionContext {
+        private final NetSocket clientSocket;
+        private final NetClient netClient;
+        private final AtomicBoolean finished = new AtomicBoolean();
+        private volatile DothanConnection proxy;
+
+        private ConnectionContext(NetSocket clientSocket, NetClient netClient) {
+            this.clientSocket = clientSocket;
+            this.netClient = netClient;
+        }
+
+        private void closeNow() {
+            DothanConnection activeProxy = proxy;
+            if (activeProxy == null) {
+                closePending();
+            } else {
+                activeProxy.close();
+            }
+        }
+
+        private void closePending() {
+            finish(clientSocket.close());
+        }
+
+        private void finishedProxy(Throwable socketCloseError) {
+            Future<Void> socketClosure = socketCloseError == null
+                    ? Future.succeededFuture()
+                    : Future.failedFuture(socketCloseError);
+            finish(socketClosure);
+        }
+
+        private void finish(Future<Void> socketClosure) {
+            if (!finished.compareAndSet(false, true)) {
+                return;
+            }
+            Future.join(socketClosure, netClient.close()).mapEmpty().onComplete(result -> {
+                if (result.failed()) {
+                    recordCloseFailure(result.cause());
+                }
+                connections.remove(this);
+                if (retired.get() && connections.isEmpty()) {
+                    closeServer();
+                    tryCompleteRetirement();
+                }
+            });
+        }
     }
 }

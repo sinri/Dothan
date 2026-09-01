@@ -2,6 +2,8 @@ package io.github.sinri.Dothan.DothanProxy;
 
 import io.github.sinri.Dothan.Config.DothanConfigSnapshot;
 import io.github.sinri.Dothan.Security.SecureRecordCodec;
+import io.vertx.core.Future;
+import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.internal.logging.Logger;
@@ -11,21 +13,24 @@ import io.vertx.core.net.NetSocket;
 import java.security.GeneralSecurityException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Consumer;
 
 public class DothanConnection {
     private final NetSocket clientSocket;
     private final NetSocket serverSocket;
     private final Vertx vertx;
     private final DothanConfigSnapshot config;
-    private final Runnable closeCallback;
+    private final Consumer<Throwable> closeCallback;
     private final Logger logger = LoggerFactory.getLogger(getClass());
-    private boolean closed;
+    private final AtomicBoolean closed = new AtomicBoolean();
+    private final Promise<Void> closeCompletion = Promise.promise();
     private long handshakeTimerId = -1;
     private FlowControlledDirection requestDirection;
     private FlowControlledDirection responseDirection;
 
     DothanConnection(Vertx vertx, NetSocket clientSocket, NetSocket serverSocket,
-                     DothanConfigSnapshot config, Runnable closeCallback) {
+                     DothanConfigSnapshot config, Consumer<Throwable> closeCallback) {
         this.vertx = vertx;
         this.clientSocket = clientSocket;
         this.serverSocket = serverSocket;
@@ -99,7 +104,7 @@ public class DothanConnection {
     }
 
     private void plaintextInputClosed(SecureRecordCodec.Encoder encoder, NetSocket encryptedDestination) {
-        if (closed) {
+        if (closed.get()) {
             return;
         }
         try {
@@ -111,7 +116,7 @@ public class DothanConnection {
     }
 
     private void encryptedInputClosed(SecureRecordCodec.Decoder decoder) {
-        if (closed) {
+        if (closed.get()) {
             return;
         }
         try {
@@ -200,11 +205,10 @@ public class DothanConnection {
         close();
     }
 
-    private void close() {
-        if (closed) {
-            return;
+    Future<Void> close() {
+        if (!closed.compareAndSet(false, true)) {
+            return closeCompletion.future();
         }
-        closed = true;
         cancelHandshakeTimer();
         if (requestDirection != null) {
             requestDirection.stop();
@@ -216,9 +220,15 @@ public class DothanConnection {
         serverSocket.handler(null);
         clientSocket.closeHandler(null);
         serverSocket.closeHandler(null);
-        clientSocket.close();
-        serverSocket.close();
-        closeCallback.run();
+        Future.join(clientSocket.close(), serverSocket.close()).mapEmpty().onComplete(result -> {
+            closeCallback.accept(result.cause());
+            if (result.succeeded()) {
+                closeCompletion.complete();
+            } else {
+                closeCompletion.fail(result.cause());
+            }
+        });
+        return closeCompletion.future();
     }
 
     private void cancelHandshakeTimer() {

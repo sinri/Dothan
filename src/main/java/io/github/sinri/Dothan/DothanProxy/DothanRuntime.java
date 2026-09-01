@@ -135,16 +135,18 @@ public final class DothanRuntime {
     }
 
     private Future<Void> startPorts(Set<Integer> ports, List<ManagedListener> prepared) {
-        Future<Void> chain = Future.succeededFuture();
-        for (int port : ports) {
-            chain = chain.compose(ignored -> {
+        List<Future<Void>> starts = new ArrayList<>();
+        try {
+            for (int port : ports) {
                 ManagedListener listener = listenerFactory.create(port);
                 allListeners.add(listener);
                 prepared.add(listener);
-                return listener.start();
-            });
+                starts.add(listener.start());
+            }
+        } catch (RuntimeException error) {
+            return Future.failedFuture(error);
         }
-        return chain;
+        return Future.join(starts).mapEmpty();
     }
 
     private <T> Future<T> rollbackPrepared(List<ManagedListener> prepared, Throwable primaryError) {
