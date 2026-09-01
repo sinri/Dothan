@@ -62,18 +62,21 @@ usage: options
 
      -b <arg>   blacklist, separate IP with comma (as of 4.0)
      -c <arg>   Set proxy config file. If not use this, h,p and l are needed.
-     -d         use detail mode
+     -d         deprecated alias for -v
      -h <arg>   database host
      -help      Display help information
      -k         keep config and no hot update
      -l <arg>   listen local port
      -p <arg>   database port
      -w <arg>   whitelist, separate IP with comma (as of 4.0)
-     -v         verbose
+     -v         enable verbose diagnostics
 
 ### Logging and privacy
 
-The `-d` and `-v` options enable the same verbose diagnostics. They log connection metadata such as
+Use `-v` to enable verbose diagnostics. The legacy `-d` option remains an equivalent alias throughout
+the 7.x release line, but it is deprecated as of 7.1, emits a migration warning, and is planned for
+removal in the next major release. If both options are supplied, verbose diagnostics are enabled and
+the `-d` warning is still emitted. These diagnostics log connection metadata such as
 addresses, configuration versions, traffic direction, and the number of forwarded bytes. Dothan never
 logs transfer keys, TLS store passwords, or TCP payload contents at any log level.
 
@@ -83,9 +86,9 @@ payload inspection is intentionally outside the scope of these options.
 
 ### Quick Proxy 
 
-Run Dothan quickly for one proxy, *h*ost, *p*ort and *l*isten port are required, and *d*etail mode is also available.
+Run Dothan quickly for one proxy; *h*ost, *p*ort and *l*isten port are required, and verbose diagnostics are also available.
 
-    java -jar Dothan.jar -d -hdatabase.com -p3306 -l20001
+    java -jar Dothan.jar -v -hdatabase.com -p3306 -l20001
 
 ### Configured Proxy
 
@@ -117,7 +120,7 @@ Here is an example:
 
 The command would be as following if the config file path is  `/path/to/Dothan.config`.
 
-    java -jar Dothan.jar -d -c /path/to/Dothan.config
+    java -jar Dothan.jar -v -c /path/to/Dothan.config
 
 ### Hot Update Version
 

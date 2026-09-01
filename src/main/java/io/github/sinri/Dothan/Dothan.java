@@ -45,7 +45,10 @@ public class Dothan {
                 return;
             }
 
-            boolean verbose = options.hasOption("v") || options.hasOption("d");
+            if (usesDeprecatedDetailOption(options)) {
+                logger.warn("Option -d is deprecated and will be removed in the next major release; use -v instead.");
+            }
+            boolean verbose = isVerbose(options);
             boolean hotReloadDisabled = options.hasOption("k");
             Path configPath = null;
             DothanConfigSnapshot initial;
@@ -158,7 +161,15 @@ public class Dothan {
         }
     }
 
-    private static Options options() {
+    static boolean isVerbose(CommandLine options) {
+        return options.hasOption("v") || options.hasOption("d");
+    }
+
+    static boolean usesDeprecatedDetailOption(CommandLine options) {
+        return options.hasOption("d");
+    }
+
+    static Options options() {
         Options options = new Options();
         options.addOption("help", "Display help information");
         options.addOption("c", true, "Set proxy config file. If not use this, h,p and l are needed.");
@@ -167,9 +178,9 @@ public class Dothan {
         options.addOption("l", true, "listen local port");
         options.addOption("w", true, "whitelist, separate IP with comma (as of 4.0)");
         options.addOption("b", true, "blacklist, separate IP with comma (as of 4.0)");
-        options.addOption("d", "use detail mode");
+        options.addOption("d", "deprecated alias for -v");
         options.addOption("k", "keep config and no hot update");
-        options.addOption("v", "verbose");
+        options.addOption("v", "enable verbose diagnostics");
         return options;
     }
 

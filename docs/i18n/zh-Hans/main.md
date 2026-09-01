@@ -48,19 +48,19 @@ Dothan 本身是一个地名，中文译名为多坍。
 ```
 -b <arg>   blacklist, separate IP with comma (as of 4.0)
 -c <arg>   Set proxy config file. If not use this, h,p and l are needed.
--d         use detail mode
+-d         deprecated alias for -v
 -h <arg>   database host
 -help      Display help information
 -k         keep config and no hot update
 -l <arg>   listen local port
 -p <arg>   database port
 -w <arg>   whitelist, separate IP with comma (as of 4.0)
--v         verbose
+-v         enable verbose diagnostics
 ```
 
 ### 日志与隐私
 
-`-d` 和 `-v` 启用相同的详细诊断日志，仅记录地址、配置版本、流量方向和转发字节数等连接元数据。无论使用何种日志级别，Dothan 都不会记录传输密钥、TLS 存储口令或 TCP 载荷内容。
+请使用 `-v` 启用详细诊断日志。旧选项 `-d` 在整个 7.x 版本线中仍作为 `-v` 的等价别名保留，但从 7.1 起已废弃；使用时会输出迁移警告，并计划在下一个主版本中移除。同时使用两个选项时仍会启用详细诊断日志，并输出 `-d` 的废弃警告。这些日志仅记录地址、配置版本、流量方向和转发字节数等连接元数据。无论使用何种日志级别，Dothan 都不会记录传输密钥、TLS 存储口令或 TCP 载荷内容。
 
 详细模式可能为每个转发缓冲区生成一条元数据日志，因此高吞吐量或数据高度分片的连接会增加日志量。请继续实施常规的日志保留和访问控制；这两个选项不提供载荷检查能力。
 
@@ -72,7 +72,7 @@ Dothan 本身是一个地名，中文译名为多坍。
 例如，有一个远端目标数据库（database.com:3306），中转到中转机的20001端口，并且将详情输出的话，可以在中转机运行如下指令。
 
 ```bash
-java -jar Dothan.jar -d -h database.com -p 3306 -l 20001
+java -jar Dothan.jar -v -h database.com -p 3306 -l 20001
 ```
 
 成功启动代理后，远端的目标数据库的3306端口已经被映射到了中转机的20001端口。
@@ -82,7 +82,7 @@ java -jar Dothan.jar -d -h database.com -p 3306 -l 20001
 需要编辑一个配置文件（例如在 /path/to/Dothan.config ），并在命令行中启用之。
 
 ```bash
-java -jar Dothan.jar -d -c /path/to/Dothan.config
+java -jar Dothan.jar -v -c /path/to/Dothan.config
 ```
 
 一般而言，一个配置文件以如下部分组成。
