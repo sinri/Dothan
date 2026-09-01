@@ -71,6 +71,16 @@ usage: options
      -w <arg>   whitelist, separate IP with comma (as of 4.0)
      -v         verbose
 
+### Logging and privacy
+
+The `-d` and `-v` options enable the same verbose diagnostics. They log connection metadata such as
+addresses, configuration versions, traffic direction, and the number of forwarded bytes. Dothan never
+logs transfer keys, TLS store passwords, or TCP payload contents at any log level.
+
+Verbose mode may emit one metadata entry for each forwarded buffer, so high-throughput or highly
+fragmented connections can increase log volume. Keep normal log retention and access controls in place;
+payload inspection is intentionally outside the scope of these options.
+
 ### Quick Proxy 
 
 Run Dothan quickly for one proxy, *h*ost, *p*ort and *l*isten port are required, and *d*etail mode is also available.
