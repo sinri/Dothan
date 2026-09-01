@@ -101,6 +101,8 @@ The lines with leading Plus(+) would be treated as IP Address in whitelist. If n
 
 The lines with leading Minus(-) would be treated as IP Address in blacklist. If no such lines, blacklist is ignored.
 
+Client access is checked before Dothan performs TLS setup, DNS lookup, or opens a connection to the service provider. A non-empty whitelist allows only listed addresses; an empty whitelist imposes no allow-list restriction. A matching blacklist entry always rejects the client. Configuration is rejected if the same IPv4 or IPv6 address appears in both lists, including equivalent IPv6 spellings. Rejected clients are closed immediately and never create a backend connection.
+
 Here is an example:
 
 ````

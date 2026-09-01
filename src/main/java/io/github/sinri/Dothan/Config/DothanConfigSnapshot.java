@@ -1,5 +1,6 @@
 package io.github.sinri.Dothan.Config;
 
+import io.github.sinri.Dothan.DothanProxy.ClientAccessPolicy;
 import io.github.sinri.Dothan.DothanProxy.DothanProxyRequirement;
 import io.github.sinri.Dothan.DothanProxy.DothanTransferModeEnum;
 import io.github.sinri.Dothan.DothanProxy.SecureTransportModeEnum;
@@ -18,6 +19,7 @@ public final class DothanConfigSnapshot {
     private final Map<Integer, DothanProxyRequirement> requirementsByListenPort;
     private final Set<String> whitelist;
     private final Set<String> blacklist;
+    private final ClientAccessPolicy clientAccessPolicy;
     private final DothanTransferModeEnum transferMode;
     private final SecureTransportModeEnum secureTransportMode;
     private final String transferKey;
@@ -48,6 +50,7 @@ public final class DothanConfigSnapshot {
         this.requirementsByListenPort = Map.copyOf(routes);
         this.whitelist = Set.copyOf(whitelist);
         this.blacklist = Set.copyOf(blacklist);
+        this.clientAccessPolicy = new ClientAccessPolicy(this.whitelist, this.blacklist);
         this.transferMode = transferMode;
         this.secureTransportMode = secureTransportMode;
         this.transferKey = transferKey;
@@ -80,6 +83,10 @@ public final class DothanConfigSnapshot {
 
     public Set<String> getBlacklist() {
         return blacklist;
+    }
+
+    public ClientAccessPolicy getClientAccessPolicy() {
+        return clientAccessPolicy;
     }
 
     public DothanTransferModeEnum getTransferMode() {

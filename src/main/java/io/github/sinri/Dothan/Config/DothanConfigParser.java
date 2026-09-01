@@ -1,5 +1,6 @@
 package io.github.sinri.Dothan.Config;
 
+import io.github.sinri.Dothan.DothanProxy.ClientAccessPolicy;
 import io.github.sinri.Dothan.DothanProxy.DothanProxyRequirement;
 import io.github.sinri.Dothan.DothanProxy.DothanTransferModeEnum;
 import io.github.sinri.Dothan.DothanProxy.SecureTransportModeEnum;
@@ -57,7 +58,7 @@ public final class DothanConfigParser {
             if (!InetAddressValidator.getInstance().isValid(trimmed)) {
                 throw new DothanConfigException("invalid " + label + " address: " + trimmed);
             }
-            destination.add(trimmed);
+            destination.add(ClientAccessPolicy.canonicalAddress(trimmed));
         }
     }
 
@@ -285,7 +286,7 @@ public final class DothanConfigParser {
             if (!InetAddressValidator.getInstance().isValid(value)) {
                 throw error(lineNumber, "invalid " + label + " address: " + value);
             }
-            target.add(value);
+            target.add(ClientAccessPolicy.canonicalAddress(value));
         }
 
         private static int firstWhitespace(String value) {

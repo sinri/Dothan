@@ -84,6 +84,7 @@ class DothanConfigTest {
         assertInvalid("20001:not_a_host:3306\n");
         assertInvalid("+ not-an-ip\n20001:host.example:3306\n");
         assertInvalid("+ 127.0.0.1\n- 127.0.0.1\n20001:host.example:3306\n");
+        assertInvalid("+ ::1\n- 0:0:0:0:0:0:0:1\n20001:host.example:3306\n");
         assertInvalid("# MODE PLAIN\n# TRANSFER KEY unused\n20001:host.example:3306\n");
         assertInvalid("# MODE PLAIN\n# MODE ENCRYPT\n20001:host.example:3306\n");
         assertInvalid("this file is only partially written");

@@ -59,7 +59,15 @@ final class DothanListener implements DothanRuntime.ManagedListener {
         DothanProxyRequirement requirement = snapshot == null
                 ? null
                 : snapshot.findRequirement(listenPort).orElse(null);
-        if (requirement == null || !allowed(snapshot, clientSocket)) {
+        if (requirement == null) {
+            clientSocket.close();
+            return;
+        }
+        String clientAddress = clientSocket.remoteAddress().host();
+        ClientAccessPolicy.Decision accessDecision = snapshot.getClientAccessPolicy().evaluate(clientAddress);
+        if (!accessDecision.isAllowed()) {
+            logger.warn("CLIENT %s rejected on listener %d using config version %d: %s"
+                    .formatted(clientAddress, listenPort, snapshot.getVersion(), accessDecision.getReason()));
             clientSocket.close();
             return;
         }
@@ -112,19 +120,6 @@ final class DothanListener implements DothanRuntime.ManagedListener {
                 .formatted(listenPort, snapshot.getVersion(), error.getMessage()), error);
         clientSocket.close();
         connectionFinished(netClient);
-    }
-
-    private boolean allowed(DothanConfigSnapshot snapshot, NetSocket socket) {
-        String host = socket.remoteAddress().host();
-        if (!snapshot.getWhitelist().isEmpty() && !snapshot.getWhitelist().contains(host)) {
-            logger.warn("CLIENT %s is not in the whitelist".formatted(host));
-            return false;
-        }
-        if (snapshot.getBlacklist().contains(host)) {
-            logger.warn("CLIENT %s is in the blacklist".formatted(host));
-            return false;
-        }
-        return true;
     }
 
     private void connectionFinished(NetClient netClient) {
