@@ -9,6 +9,8 @@ import io.vertx.core.internal.logging.LoggerFactory;
 import io.vertx.core.net.NetSocket;
 
 import java.security.GeneralSecurityException;
+import java.util.ArrayList;
+import java.util.List;
 
 public class DothanConnection {
     private final NetSocket clientSocket;
@@ -19,6 +21,8 @@ public class DothanConnection {
     private final Logger logger = LoggerFactory.getLogger(getClass());
     private boolean closed;
     private long handshakeTimerId = -1;
+    private FlowControlledDirection requestDirection;
+    private FlowControlledDirection responseDirection;
 
     DothanConnection(Vertx vertx, NetSocket clientSocket, NetSocket serverSocket,
                      DothanConfigSnapshot config, Runnable closeCallback) {
@@ -49,10 +53,11 @@ public class DothanConnection {
     }
 
     private void proxyTransparent() {
-        clientSocket.handler(buffer -> forward(clientSocket, serverSocket, buffer, "request"));
-        serverSocket.handler(buffer -> forward(serverSocket, clientSocket, buffer, "response"));
-        clientSocket.resume();
-        serverSocket.resume();
+        initializeDirections();
+        clientSocket.handler(buffer -> forward(clientSocket, buffer, "request"));
+        serverSocket.handler(buffer -> forward(serverSocket, buffer, "response"));
+        requestDirection.activate();
+        responseDirection.activate();
     }
 
     private void proxySecureRecords(DothanTransferModeEnum role, String transferKey)
@@ -62,6 +67,7 @@ public class DothanConnection {
                 : DothanTransferModeEnum.ENCRYPT;
         SecureRecordCodec.Encoder encoder = new SecureRecordCodec.Encoder(transferKey, role);
         SecureRecordCodec.Decoder decoder = new SecureRecordCodec.Decoder(transferKey, peerRole, encoder.header());
+        initializeDirections();
         handshakeTimerId = vertx.setTimer(10_000, ignored -> {
             if (!decoder.isHeaderAccepted()) {
                 fail("secure record peer handshake timed out", new SecureRecordCodec.ProtocolException("timeout"));
@@ -69,25 +75,27 @@ public class DothanConnection {
         });
 
         if (role == DothanTransferModeEnum.ENCRYPT) {
-            clientSocket.pause();
             clientSocket.closeHandler(ignored -> plaintextInputClosed(encoder, serverSocket));
             serverSocket.closeHandler(ignored -> encryptedInputClosed(decoder));
-            write(serverSocket, Buffer.buffer(encoder.header()), "secure request header");
-            clientSocket.handler(buffer -> encodeAndForward(clientSocket, encoder, serverSocket, buffer, "request"));
+            requestDirection.write(Buffer.buffer(encoder.header()), "secure request header");
+            clientSocket.handler(buffer -> encodeAndForward(clientSocket, encoder, buffer, "request"));
             serverSocket.handler(buffer -> decodeAndForward(serverSocket, decoder, encoder,
-                    clientSocket, clientSocket, buffer, "response"));
-            serverSocket.resume();
+                    clientSocket, buffer, "response"));
+            responseDirection.activate();
         } else {
-            serverSocket.pause();
             serverSocket.closeHandler(ignored -> plaintextInputClosed(encoder, clientSocket));
             clientSocket.closeHandler(ignored -> encryptedInputClosed(decoder));
-            write(clientSocket, Buffer.buffer(encoder.header()), "secure response header");
+            responseDirection.write(Buffer.buffer(encoder.header()), "secure response header");
             clientSocket.handler(buffer -> decodeAndForward(clientSocket, decoder, encoder,
-                    serverSocket, serverSocket, buffer, "request"));
-            serverSocket.handler(buffer -> encodeAndForward(serverSocket, encoder, clientSocket,
-                    buffer, "response"));
-            clientSocket.resume();
+                    serverSocket, buffer, "request"));
+            serverSocket.handler(buffer -> encodeAndForward(serverSocket, encoder, buffer, "response"));
+            requestDirection.activate();
         }
+    }
+
+    private void initializeDirections() {
+        requestDirection = new FlowControlledDirection(clientSocket, serverSocket, this::writeFailed);
+        responseDirection = new FlowControlledDirection(serverSocket, clientSocket, this::writeFailed);
     }
 
     private void plaintextInputClosed(SecureRecordCodec.Encoder encoder, NetSocket encryptedDestination) {
@@ -95,8 +103,8 @@ public class DothanConnection {
             return;
         }
         try {
-            encryptedDestination.write(Buffer.buffer(encoder.closeRecord()))
-                    .onComplete(ignored -> close());
+            directionTo(encryptedDestination).writeAndThen(Buffer.buffer(encoder.closeRecord()),
+                    "secure close record", this::close);
         } catch (GeneralSecurityException | SecureRecordCodec.ProtocolException error) {
             fail("could not send secure close record", error);
         }
@@ -115,11 +123,13 @@ public class DothanConnection {
     }
 
     private void encodeAndForward(NetSocket source, SecureRecordCodec.Encoder encoder,
-                                  NetSocket destination, Buffer plaintext, String direction) {
+                                  Buffer plaintext, String direction) {
         try {
+            List<Buffer> records = new ArrayList<>();
             for (byte[] record : encoder.encode(plaintext.getBytes())) {
-                write(source, destination, Buffer.buffer(record), "secure " + direction);
+                records.add(Buffer.buffer(record));
             }
+            directionFrom(source).write(records, "secure " + direction);
             logTransfer(direction, plaintext.length());
         } catch (GeneralSecurityException | SecureRecordCodec.ProtocolException error) {
             fail("secure " + direction + " encryption failed", error);
@@ -128,22 +138,32 @@ public class DothanConnection {
 
     private void decodeAndForward(NetSocket encryptedSource, SecureRecordCodec.Decoder decoder,
                                   SecureRecordCodec.Encoder encoder, NetSocket plaintextSource,
-                                  NetSocket destination, Buffer ciphertext, String direction) {
+                                  Buffer ciphertext, String direction) {
         try {
             int plaintextLength = 0;
+            List<Buffer> plaintextRecords = new ArrayList<>();
             for (byte[] plaintext : decoder.accept(ciphertext.getBytes())) {
                 plaintextLength += plaintext.length;
-                write(encryptedSource, destination, Buffer.buffer(plaintext), "secure " + direction);
+                plaintextRecords.add(Buffer.buffer(plaintext));
+            }
+            boolean closeReceived = decoder.isCloseReceived();
+            if (!plaintextRecords.isEmpty()) {
+                if (closeReceived) {
+                    directionFrom(encryptedSource).writeAndThen(
+                            plaintextRecords, "secure " + direction, this::close);
+                } else {
+                    directionFrom(encryptedSource).write(plaintextRecords, "secure " + direction);
+                }
             }
             if (decoder.isHeaderAccepted() && !encoder.isPeerBound()) {
                 encoder.bindPeerHeader(decoder.acceptedHeader());
                 cancelHandshakeTimer();
-                plaintextSource.resume();
+                directionFrom(plaintextSource).activate();
             }
             if (plaintextLength > 0) {
                 logTransfer(direction, plaintextLength);
             }
-            if (decoder.isCloseReceived()) {
+            if (closeReceived && plaintextRecords.isEmpty()) {
                 close();
             }
         } catch (GeneralSecurityException | SecureRecordCodec.ProtocolException error) {
@@ -151,25 +171,21 @@ public class DothanConnection {
         }
     }
 
-    private void forward(NetSocket source, NetSocket destination, Buffer buffer, String direction) {
+    private void forward(NetSocket source, Buffer buffer, String direction) {
         logTransfer(direction, buffer.length());
-        write(source, destination, buffer, direction + " from " + source.remoteAddress());
+        directionFrom(source).write(buffer, direction + " from " + source.remoteAddress());
     }
 
-    private void write(NetSocket socket, Buffer buffer, String operation) {
-        socket.write(buffer).onFailure(error -> fail(operation + " write failed", error));
+    private FlowControlledDirection directionFrom(NetSocket source) {
+        return source == clientSocket ? requestDirection : responseDirection;
     }
 
-    private void write(NetSocket source, NetSocket destination, Buffer buffer, String operation) {
-        destination.write(buffer).onFailure(error -> fail(operation + " write failed", error));
-        if (destination.writeQueueFull()) {
-            source.pause();
-            destination.drainHandler(ignored -> {
-                if (!closed) {
-                    source.resume();
-                }
-            });
-        }
+    private FlowControlledDirection directionTo(NetSocket destination) {
+        return destination == serverSocket ? requestDirection : responseDirection;
+    }
+
+    private void writeFailed(String operation, Throwable error) {
+        fail(operation + " write failed", error);
     }
 
     private void logTransfer(String direction, int plaintextLength) {
@@ -179,7 +195,8 @@ public class DothanConnection {
     }
 
     private void fail(String message, Throwable error) {
-        logger.error(message + ": " + error.getMessage(), error);
+        logger.error("%s [%s <-> %s]: %s".formatted(
+                message, clientSocket.remoteAddress(), serverSocket.remoteAddress(), error.getMessage()), error);
         close();
     }
 
@@ -189,6 +206,16 @@ public class DothanConnection {
         }
         closed = true;
         cancelHandshakeTimer();
+        if (requestDirection != null) {
+            requestDirection.stop();
+        }
+        if (responseDirection != null) {
+            responseDirection.stop();
+        }
+        clientSocket.handler(null);
+        serverSocket.handler(null);
+        clientSocket.closeHandler(null);
+        serverSocket.closeHandler(null);
         clientSocket.close();
         serverSocket.close();
         closeCallback.run();
