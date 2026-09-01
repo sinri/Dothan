@@ -50,10 +50,31 @@ GPLv3
 
 ## Get Runnable Package
 
-You can obtain the runnable package in two ways.
+Building Dothan requires Java 17 and Maven 3. Run the following Maven commands from the project root.
 
-1. Download JAR file from GitHub release area.
-1. Use Maven 3, run `mvn clean package`. 
+You can download a runnable JAR from the [GitHub Releases](https://github.com/sinri/Dothan/releases)
+page. Release asset names may differ between releases and are not guaranteed to be `Dothan.jar`.
+
+For a local build, choose the command according to the intended artifact:
+
+* `mvn clean package` creates the regular Maven/library JAR. It does not include the runtime dependencies
+  or an executable main manifest, so it cannot be started with `java -jar`.
+* `mvn -Ppackage clean package` creates the shaded, runnable fat JAR with its runtime dependencies and main
+  class. The `package` profile currently skips tests, so a successful package build does not mean that tests ran.
+
+Before creating the runnable package, run `mvn clean verify` separately. This executes the configured Maven
+verification lifecycle, but should not be interpreted as a claim that the current test suite provides effective
+coverage.
+
+With the current project version, the runnable artifact is `target/Dothan-7.1.0-SNAPSHOT.jar`; the filename
+changes with the version in `pom.xml`. Verify it after packaging with:
+
+```bash
+java -jar target/Dothan-7.1.0-SNAPSHOT.jar -help
+```
+
+The usage examples below use `Dothan.jar` as a placeholder. Replace it with the actual downloaded release
+asset or the locally built runnable JAR path.
 
 
 ## Usage (As of Version 2.0)

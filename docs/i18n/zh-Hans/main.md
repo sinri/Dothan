@@ -27,9 +27,28 @@ Dothan 本身是一个地名，中文译名为多坍。
 
 ## 获取可执行文件
 
-你可以从 [Release](https://github.com/sinri/Dothan/releases) 页面找到最新的可执行文件。
+构建 Dothan 需要 Java 17 和 Maven 3。以下 Maven 命令均应在项目根目录执行。
 
-如果你愿意自己编译，可以直接通过Maven进行打包。
+你可以从 [GitHub Releases](https://github.com/sinri/Dothan/releases) 页面下载可执行 JAR。发布资产的名称可能随版本变化，
+不保证固定为 `Dothan.jar`。
+
+本地构建时，请根据产物用途选择命令：
+
+* `mvn clean package` 生成普通的 Maven/library JAR。该产物不包含运行时依赖和可执行主清单，不能通过 `java -jar` 启动。
+* `mvn -Ppackage clean package` 生成包含运行时依赖和主类的可执行 fat JAR。`package` profile 当前会跳过测试，
+  因此打包成功不代表测试已经执行。
+
+生成可执行包之前，建议单独运行 `mvn clean verify`。该命令会执行当前配置的 Maven 验证生命周期，但不表示现有测试套件
+已经提供有效的测试覆盖。
+
+按当前项目版本，生成的可执行文件为 `target/Dothan-7.1.0-SNAPSHOT.jar`；文件名会随 `pom.xml` 中的版本变化。
+打包后可运行以下命令验证：
+
+```bash
+java -jar target/Dothan-7.1.0-SNAPSHOT.jar -help
+```
+
+下文用法示例中的 `Dothan.jar` 是路径占位符。请将其替换为实际下载的发布资产，或本地构建的可执行 JAR 路径。
 
 如果你希望将Dothan集成进你自己的项目，可以使用Maven，在POM中添加如下依赖即可：
 
